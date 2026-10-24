@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Thêm G02 PM2.5 replay có expected results, quality/raw/normalized, rule/episode/lineage và cán bộ đóng có lý do qua Case/Task/Evidence dùng chung.
+- Thêm G03 tình huống an toàn giả lập, ACL theo case/current role, kiểm tra mọi đường list/search/report/notification/file, nhật ký truy cập không ghi nội dung; admin không có quyền đọc ngầm.
+- Bổ sung tài khoản demo theo subject/issuer, bộ nghiệm thu 4–6, kiểm thử browser mobile và tài liệu/OpenAPI/CI.
+
 - Thêm registry gói bất biến, validator schema/seed/role/action/BPMN trong tập hỗ trợ, CLI validate/install/activate và UI trạng thái/lỗi; case pin revision, v1 giữ chính sách cũ còn v2 yêu cầu ảnh sạch.
 
 - Thêm upload/cách ly bằng chứng vào SeaweedFS, kiểm tra định dạng/kích thước/checksum, quét ClamAV thật và tải tệp theo quyền; nghiệm thu yêu cầu bằng chứng sạch gắn với lần xử lý hiện tại.

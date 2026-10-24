@@ -30,7 +30,7 @@ Mỗi thư mục có đúng sáu đầu vào được loader đọc: `manifest.j
 
 Adapter `facility-v1` hỗ trợ đúng form title/roomId/assetId/description, vai trò reporter/coordinator/technician/approver và các task/action G01 đã nghiệm thu. Schema là JSON Schema 2020-12, compile strict bằng Ajv và kiểm tra seed. Payload create/resubmit thực sự kiểm tra schema snapshot, không chỉ ghi schema để trưng bày.
 
-Phạm vi BPMN cố ý giới hạn: start/end, các user task, sequence flow và exclusive gateway của topology G01 đã kiểm thử. Validator đối chiếu cấu trúc/điều kiện/biến/thuộc tính thực thi với template tin cậy, kiểm tra ID/trùng, liên kết và khả năng tới task/end; cho đổi process ID, name và nhãn. DTD/entity, node script/service/listener, biểu thức tùy ý hoặc topology khác bị từ chối. Đây không phải bộ chứng minh mọi BPMN hợp lệ.
+Phạm vi BPMN cố ý giới hạn: start/end, các user task, sequence flow và exclusive gateway của topology G01 đã kiểm thử. Validator đối chiếu cấu trúc/điều kiện/biến/thuộc tính thực thi với template tin cậy, kiểm tra ID/trùng, liên kết và khả năng tới task/end; cho đổi process ID theo tham chiếu manifest workflow (tên-v<major>), name và nhãn. DTD/entity, node script/service/listener, biểu thức tùy ý hoặc topology khác bị từ chối. Đây không phải bộ chứng minh mọi BPMN hợp lệ.
 
 Khi cần quy trình/field/action ngoài contract, phải viết adapter mới trong lõi, thêm schema/permission/worker/UI và kiểm thử, rồi mới đăng ký tập cấu hình đó. Đổi tên file BPMN không tạo ra một adapter mới.
 

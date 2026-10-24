@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AccessLog } from "./Safety.js";
 import { Evidence } from "./Evidence.js";
 
 type Person = { id: string; name: string; roles: string[] };
@@ -8,6 +9,7 @@ type Catalog = {
   people: Person[];
   teams: { id: string; name: string }[];
   canCreate: boolean;
+  canAudit?: boolean;
 };
 type Case = {
   id: string;
@@ -590,6 +592,13 @@ export function G01({
                   Đã đóng lúc {date(detail.item.closedAt)} · Quyết định bởi{" "}
                   {name(detail.item.decisionBy)}
                 </p>
+              )}
+              {catalog?.canAudit && (
+                <AccessLog
+                  key={detail.item.id}
+                  request={request}
+                  caseId={detail.item.id}
+                />
               )}
               <h3 className="timeline-title">Lịch sử xử lý</h3>
               <ol className="timeline">

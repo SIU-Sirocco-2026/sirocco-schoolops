@@ -36,6 +36,7 @@ jobs:
       - run: pnpm demo:verify:phase3
       - run: pnpm demo:verify:phase4
       - run: pnpm demo:verify:phase5
+      - run: pnpm demo:verify:phase6
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4

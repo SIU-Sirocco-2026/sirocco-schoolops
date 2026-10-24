@@ -1157,3 +1157,13 @@ h3 {
   flex-wrap: wrap;
   gap: 12px;
 }
+
+.safety {
+  padding: 20px;
+  margin-bottom: 24px;
+  overflow-wrap: anywhere;
+}
+.safety .button {
+  max-width: 100%;
+  white-space: normal;
+}

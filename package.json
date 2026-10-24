@@ -27,7 +27,8 @@
     "demo:verify:phase4": "node scripts/verify-phase4.mjs",
     "demo:users": "node scripts/sync-demo-users.mjs",
     "demo:replay:g02": "node scripts/replay-g02.mjs",
-    "demo:verify:phase5": "node scripts/verify-phase5.mjs"
+    "demo:verify:phase5": "node scripts/verify-phase5.mjs",
+    "demo:verify:phase6": "node scripts/verify-phase6.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

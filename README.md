@@ -4,20 +4,22 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Giai đoạn 4 bổ sung registry/CLI gói có phiên bản và G01 v1/v2. Xem [hướng dẫn gói](docs/PHASE-4.md); quy trình review/merge vẫn qua các PR phụ thuộc.
+Đã triển khai và có bộ nghiệm thu cho giai đoạn 1–6: nền tảng dùng chung, G01, bằng chứng sạch/khôi phục lỗi, registry gói v1/v2, G02 PM2.5 phát lại có truy nguồn và G03 hồ sơ hạn chế. Mã nằm trên chuỗi nhánh/PR đang chờ đồng đội review và merge; main chưa tự được cập nhật chỉ vì CI đạt.
 
-Đã có nền tảng giai đoạn 1, luồng G01 giai đoạn 2 và các chức năng giai đoạn 3: upload/cách ly/quét bằng chứng bằng SeaweedFS + ClamAV, chặn gửi nghiệm thu khi thiếu bằng chứng sạch, outbox/worker tự phục hồi lỗi và báo cáo theo quyền. Web/API dùng Keycloak, APISIX, PostgreSQL và Flowable thật.
-
-Xem [hướng dẫn giai đoạn 3](docs/PHASE-3.md), [ma trận nghiệm thu](docs/verification/phase-3-acceptance.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md) và [OpenAPI](docs/openapi.yaml). Validate/activate gói v1/v2, G02/G03 và backup/restore thuộc các giai đoạn tiếp theo. Mã đang trên nhánh phát triển; kiểm tra CI/review và thứ tự merge của PR trước khi dùng main.
+Hướng dẫn: [giai đoạn 4 — gói](docs/PHASE-4.md), [giai đoạn 5 — G02](docs/PHASE-5.md), [giai đoạn 6 — G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml). Giai đoạn 7 còn nghiệm thu phát hành, backup/restore, giấy phép và chuẩn bị demo tổng thể.
 
 ```powershell
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up
+pnpm demo:users
 # Sau khi Docker/services đã sẵn sàng, mở http://localhost:8088
 pnpm demo:verify
 pnpm demo:verify:g01
 pnpm demo:verify:phase3
+pnpm demo:verify:phase4
+pnpm demo:verify:phase5
+pnpm demo:verify:phase6
 pnpm test:e2e
 ```
 
@@ -29,7 +31,7 @@ pnpm test:e2e
 - **G03 — An toàn:** một tình huống giả lập với quyền truy cập hạn chế ở hồ sơ và tệp.
 - **Gói nghiệp vụ:** kiểm tra cấu hình trước kích hoạt và giữ tham chiếu phiên bản cho từng hồ sơ.
 
-G01 là luồng triển khai đầu tiên. Tình huống xuyên suốt: giáo viên báo máy chiếu phòng A101 không hoạt động; điều phối xác minh/giao việc; kỹ thuật viên xử lý; người nghiệm thu phê duyệt và đóng hồ sơ.
+G01 là luồng triển khai đầu tiên. G02 và G03 dùng lại API hồ sơ/nhiệm vụ/bằng chứng và giao diện chung với quyền, gói và adapter riêng. Tình huống xuyên suốt: giáo viên báo máy chiếu phòng A101 không hoạt động; điều phối xác minh/giao việc; kỹ thuật viên xử lý; người nghiệm thu phê duyệt và đóng hồ sơ.
 
 ## Cấu trúc dự kiến
 

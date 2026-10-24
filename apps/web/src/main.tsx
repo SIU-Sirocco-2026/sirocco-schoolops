@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
 import "./style.css";
+import { Safety } from "./Safety.js";
 import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
@@ -18,6 +19,8 @@ type Task = {
   canComplete: boolean;
 };
 const roleNames: Record<string, string> = {
+  safety_reporter: "Người báo an toàn",
+  safety_officer: "Cán bộ an toàn",
   environment_officer: "Cán bộ môi trường",
   environment_ingestor: "Nguồn phát lại",
   reporter: "Người báo",
@@ -61,7 +64,7 @@ function date(value: string) {
 
 function App() {
   const [mode, setMode] = useState<
-    "g01" | "foundation" | "packs" | "environment"
+    "g01" | "foundation" | "packs" | "environment" | "safety"
   >("g01");
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -217,6 +220,16 @@ function App() {
               Môi trường PM2.5
             </button>
           )}
+          {user?.roles.some((r) =>
+            ["safety_reporter", "safety_officer"].includes(r),
+          ) && (
+            <button
+              className={`nav-item ${mode === "safety" ? "active" : ""}`}
+              onClick={() => setMode("safety")}
+            >
+              An toàn hạn chế
+            </button>
+          )}
         </nav>
         <div className="sidebar-note">
           <span className="small-dot" />
@@ -260,13 +273,15 @@ function App() {
               <div className="eyebrow">VẬN HÀNH TRƯỜNG HỌC</div>
               <h1>
                 {user
-                  ? mode === "environment"
-                    ? "Môi trường PM2.5"
-                    : mode === "g01"
-                      ? "Sự cố cơ sở vật chất"
-                      : mode === "packs"
-                        ? "Gói nghiệp vụ"
-                        : "Công việc của tôi"
+                  ? mode === "safety"
+                    ? "An toàn hạn chế"
+                    : mode === "environment"
+                      ? "Môi trường PM2.5"
+                      : mode === "g01"
+                        ? "Sự cố cơ sở vật chất"
+                        : mode === "packs"
+                          ? "Gói nghiệp vụ"
+                          : "Công việc của tôi"
                   : "Một nơi để phối hợp xử lý."}
               </h1>
               <p className="intro">
@@ -340,6 +355,8 @@ function App() {
                 </div>
               </div>
             </section>
+          ) : mode === "safety" ? (
+            <Safety request={request} />
           ) : mode === "environment" ? (
             <Environment request={request} />
           ) : mode === "packs" ? (

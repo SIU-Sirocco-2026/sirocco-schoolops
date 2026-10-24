@@ -686,6 +686,185 @@ paths:
         "403": { description: Officer membership missing/revoked }
         "404": { description: Outside scope }
         "409": { description: File not clean or integrity failed }
+  /api/g03/cases:
+    get:
+      description: Shared list/search/bucket/pagination with current safety role AND explicit case ACL AND participation relation. Unauthorized callers see zero items/counts. Pack-filtered; no cross-prefix G01/G02 access.
+      responses:
+        "200":
+          { description: items, total, page, pageSize within current G03 scope }
+        "403": { description: Membership disabled }
+    post:
+      description: safety_reporter creates a neutral simulated case. Initial ACL includes reporter and assigned safety coordinator. Same pack/reporter/key replay still checks current ACL. Same report schema and Idempotency-Key UUID as G01.
+      parameters:
+        - {
+            in: header,
+            name: Idempotency-Key,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Report" }
+      responses:
+        "201":
+          {
+            description: Shared case linked to real workflow and pinned safety pack,
+          }
+        "200": { description: Authorized idempotent replay }
+        "202": { description: Durable command pending synchronization }
+        "403": { description: Missing safety_reporter role }
+        "404": { description: Replay case no longer in current ACL }
+        "409": { description: Same key used with different content }
+  /api/g03/cases/{id}:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared projection/timeline/synchronization; G03 current-role, explicit ACL and case relation checked. Access decision journaled without body/query content.
+      responses:
+        "200": { description: Authorized case, timeline and synchronization }
+        "404": { description: Missing or outside current G03 scope }
+  /api/g03/cases/{id}/actions:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    post:
+      description: Same G01 step/revision/action schema through shared engine executor, with safety roles/ACL. Only named safety staff assignment; no group editor. Assigned repairer cannot self-approve. Assignment updates participants ACL; submit requires clean evidence for current task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [action, revision] }
+      responses:
+        "200": { description: Updated shared case }
+        "202": { description: Command pending automatic recovery }
+        "400":
+          {
+            description: Invalid action/fields/self-approval assignment or unsupported group,
+          }
+        "403": { description: Current case reader lacks action permission }
+        "404": { description: Outside case scope }
+        "409":
+          { description: Stale revision, evidence missing or mapping conflict }
+  /api/g03/reports:
+    get:
+      description: Shared open/overdue/completed counts filtered by G03 safety role, explicit ACL and participation; no implicit admin access.
+      responses:
+        "200":
+          {
+            description: Counts within current scope,
+            zero for unauthorized users,
+          }
+  /api/g03/notifications:
+    get:
+      description: Recipient-linked case notifications re-filtered by CURRENT case permission. Neutral message/code only; no title or body. ACL revocation hides old notifications.
+      responses:
+        "200":
+          {
+            description: Up to 100 scoped notifications; unauthorized callers see empty items,
+          }
+  /api/g03/cases/{id}/access-log:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Safety officer with access to this exact case only. Actor UUID, operation/method, initial allowed decision, final HTTP status (nullable on interruption) and time; no content/search/filename/token.
+      responses:
+        "200": { description: Up to 200 journal entries for this case }
+        "403":
+          { description: Caller can read the case but lacks safety audit role }
+        "404": { description: Case outside current scope }
+  /api/g03/cases/{id}/evidence:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared metadata with explicit G03 case ACL/current role.
+      responses:
+        "200": { description: items and canUpload }
+        "404": { description: Outside case scope }
+    post:
+      description: Same binary headers/10 MiB/idempotency/quarantine/scan as G01. Safety reporter at report/supplement or assigned safety repairer only; current G03 ACL required.
+      parameters:
+        - {
+            in: header,
+            name: Idempotency-Key,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            in: header,
+            name: X-File-Name,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: Quarantined file }
+        "200": { description: Authorized idempotent replay }
+        "403": { description: Reader lacks upload permission at current step }
+        "404": { description: Outside G03 scope }
+        "413": { description: File too large }
+  /api/g03/cases/{id}/evidence/{evidenceId}/download:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+      - {
+          in: path,
+          name: evidenceId,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared clean-file download/checksum with current explicit G03 permission rechecked after storage read. Knowing both IDs grants no access; no public object URL.
+      responses:
+        "200": { description: Original clean attachment bytes }
+        "403": { description: Membership revoked }
+        "404": { description: Outside case scope or wrong file }
+        "409": { description: File not clean or integrity failed }
+  /api/g02/catalog:
+    get:
+      description: Shared catalog for the assigned officer UI; active G02 version and no manual-create permission.
+      responses:
+        "200":
+          { description: Rooms/assets/staff and versions with canCreate=false }
+        "403": { description: Missing environment role }
+  /api/g03/catalog:
+    get:
+      description: Safety role only. Shared room/asset catalog and eligible safety staff mapped to supported actions; no unrestricted team assignment. Current role decides canCreate/canAudit.
+      responses:
+        "200":
+          {
+            description: Catalog with canCreate/canAudit,
+            staff and active safety version,
+          }
+        "403": { description: Missing safety role }
 components:
   responses:
     CaseResult:
