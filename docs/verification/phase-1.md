@@ -2,13 +2,15 @@
 
 Ngày kiểm tra: 24/10/2026. Môi trường local: Windows, Node.js 22.16.0, Docker Engine 29.5.3, Docker Compose 5.1.4, Linux containers.
 
+Audit thư viện production: không có lỗ hổng đã biết theo kết quả pnpm audit tại lần kiểm tra này.
+
 ## Kết quả local
 
 | Kiểm tra                       | Kết quả                                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | TypeScript web và API          | Đạt                                                                                                    |
 | Build web và API từ source     | Đạt                                                                                                    |
-| Auth/API và adapter unit tests | Đạt; xem bộ test trong `apps/api/test`                                                                 |
+| Auth/API và adapter unit tests | Đạt 12 kiểm thử; xem bộ test trong `apps/api/test`                                                     |
 | Compose start/readiness        | Đạt, các dịch vụ chạy qua cấu hình trong repo                                                          |
 | Live integration               | Đạt 8 nhóm kiểm tra trong `scripts/verify.mjs`                                                         |
 | Browser end-to-end             | Đạt trên Chromium; hai browser context cho người báo và kỹ thuật viên                                  |
