@@ -1,5 +1,9 @@
 name: Foundation checks
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -16,6 +20,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm test && pnpm build
       - run: pnpm demo:init
+      - name: Pull service images with bounded retry
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose pull --ignore-buildable --quiet; then
+              break
+            fi
+            if [ "$attempt" = "3" ]; then exit 1; fi
+            sleep 5
+          done
       - run: pnpm demo:up
       - run: pnpm demo:verify
       - run: pnpm exec playwright install --with-deps chromium
