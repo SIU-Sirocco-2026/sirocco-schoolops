@@ -25,7 +25,7 @@ const refs = {
   schema: "g01-case@1.0.0",
   workflow: "g01-facilities@1.0.0",
 };
-const supportedActions: string[] = ["accept", "return_info", "resubmit"];
+const supportedActions: string[] = ["accept", "return_info", "resubmit", "assign", "receive"];
 const report = z
   .object({
     title: z.string().trim().min(5).max(160),
@@ -514,6 +514,65 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           assetId: input.assetId || null,
           description: input.description,
         };
+      }
+      if (input.action === "assign") {
+        if (Boolean(input.technicianId) === Boolean(input.teamId))
+          fail(
+            400,
+            "INVALID_ASSIGNMENT",
+            "Chọn một người hoặc một nhóm xử lý.",
+          );
+        if (new Date(input.dueAt).getTime() <= Date.now())
+          fail(400, "INVALID_DEADLINE", "Hạn hoàn thành phải ở tương lai.");
+        await requireRole(client, input.approverId, "approver");
+        if (input.technicianId) {
+          await requireRole(client, input.technicianId, "technician");
+          if (input.approverId === input.technicianId)
+            fail(400, "SELF_APPROVAL", "Người xử lý không được tự nghiệm thu.");
+        }
+        if (
+          input.teamId &&
+          !(
+            await client.query(
+              "SELECT 1 FROM team_members tm JOIN memberships m ON m.subject_id=tm.subject_id WHERE tm.team_id=$1 AND m.enabled AND 'technician'=ANY(m.roles) AND m.subject_id<>$2",
+              [input.teamId, input.approverId],
+            )
+          ).rowCount
+        )
+          fail(
+            409,
+            "TEAM_UNAVAILABLE",
+            "Nhóm chưa có kỹ thuật viên hợp lệ khác người nghiệm thu.",
+          );
+        next.status = "assigned";
+        next.technician_id = input.technicianId || null;
+        next.team_id = input.teamId || null;
+        next.approver_id = input.approverId;
+        next.due_at = new Date(input.dueAt).toISOString();
+        variables = {
+          technician: next.technician_id || "",
+          team: next.team_id || "",
+          approver: input.approverId,
+          dueAt: next.due_at,
+        };
+        details = {
+          technicianId: next.technician_id,
+          teamId: next.team_id,
+          approverId: input.approverId,
+          dueAt: next.due_at,
+        };
+      }
+      if (input.action === "receive") {
+        if (row.approver_id === user.id)
+          fail(
+            403,
+            "SELF_APPROVAL",
+            "Người nghiệm thu không được nhận xử lý hồ sơ này.",
+          );
+        next.status = "in_progress";
+        next.technician_id = user.id;
+        variables.technician = user.id;
+        details = { technicianId: user.id };
       }
       await checkEngine(workflow, row);
       // Persist intent before a network mutation. An uncertain result blocks further writes;
