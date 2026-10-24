@@ -24,7 +24,10 @@
     "packs:install": "node scripts/packs.mjs install",
     "packs:activate": "node scripts/packs.mjs activate",
     "packs:list": "node scripts/packs.mjs list",
-    "demo:verify:phase4": "node scripts/verify-phase4.mjs"
+    "demo:verify:phase4": "node scripts/verify-phase4.mjs",
+    "demo:users": "node scripts/sync-demo-users.mjs",
+    "demo:replay:g02": "node scripts/replay-g02.mjs",
+    "demo:verify:phase5": "node scripts/verify-phase5.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

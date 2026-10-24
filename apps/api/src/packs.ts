@@ -13,17 +13,35 @@ const version = z.string().regex(/^\d+\.\d+\.\d+$/);
 const ref = z.string().regex(/^[a-z][a-z0-9-]*@\d+\.\d+\.\d+$/);
 export const manifestSchema = z
   .object({
-    id: z.enum(["g01"]),
+    id: z.enum(["g01", "g02"]),
     version,
     name: z.string().min(3).max(120),
-    adapter: z.literal("facility-v1"),
+    adapter: z.enum(["facility-v1", "environment-v1"]),
     schema: ref,
     workflow: ref,
     evidence: ref,
     roles: z.record(
       z.string().regex(/^[a-z]+$/),
-      z.enum(["reporter", "coordinator", "technician", "approver"]),
+      z.enum([
+        "reporter",
+        "coordinator",
+        "technician",
+        "approver",
+        "environment_officer",
+      ]),
     ),
+    rule: z
+      .object({
+        version: ref,
+        label: z.literal("Ngưỡng minh họa, không phải khuyến cáo sức khỏe"),
+        threshold: z.number().min(1).max(1000),
+        openConsecutive: z.number().int().min(1).max(20),
+        recoveryConsecutive: z.number().int().min(1).max(20),
+        cooldownSeconds: z.number().int().min(0).max(86400),
+        gapSeconds: z.number().int().min(60).max(86400),
+      })
+      .strict()
+      .optional(),
     tasks: z.record(
       z.string(),
       z
@@ -190,19 +208,33 @@ export async function validatePack(input: unknown): Promise<{
       pack.evidence.version !== pack.manifest.evidence
     )
       throw new Error("Tham chiếu schema/evidence không khớp manifest.");
-    if (pack.manifest.id !== "g01" || pack.manifest.adapter !== "facility-v1")
-      throw new Error("Adapter chưa được hỗ trợ.");
-    for (const role of ["reporter", "coordinator", "technician", "approver"])
-      if (pack.manifest.roles[role] !== role)
-        throw new Error(
-          `Role ${role} cần ánh xạ đúng quyền mà adapter hỗ trợ.`,
-        );
-    if (Object.keys(pack.manifest.roles).length !== 4)
-      throw new Error("Role ngoài tập adapter hỗ trợ.");
-    if (canonical(pack.manifest.tasks) !== canonical(facilityTasks))
+    const env = pack.manifest.id === "g02";
+    if (pack.manifest.adapter !== (env ? "environment-v1" : "facility-v1"))
+      throw new Error("Adapter không đúng gói.");
+    const expectedRoles = env
+      ? { officer: "environment_officer" }
+      : {
+          reporter: "reporter",
+          coordinator: "coordinator",
+          technician: "technician",
+          approver: "approver",
+        };
+    if (canonical(pack.manifest.roles) !== canonical(expectedRoles))
+      throw new Error("Role ngoài hợp đồng adapter hỗ trợ.");
+    const expectedTasks = env
+      ? {
+          verify: { role: "officer", actions: ["confirm", "dismiss"] },
+          repair: { role: "officer", actions: ["save_work", "resolve"] },
+        }
+      : facilityTasks;
+    if (canonical(pack.manifest.tasks) !== canonical(expectedTasks))
       throw new Error(
         "Task/role/action thiếu hoặc không đúng hợp đồng adapter.",
       );
+    if (env && !pack.manifest.rule)
+      throw new Error("G02 cần quy tắc môi trường có phiên bản.");
+    if (!env && pack.manifest.rule)
+      throw new Error("G01 không nhận quy tắc môi trường.");
     const schema = pack.schema;
     if (
       schema.type !== "object" ||
@@ -223,7 +255,10 @@ export async function validatePack(input: unknown): Promise<{
     const actual = normalizeXml(pack.workflow),
       trusted = normalizeXml(
         await readFile(
-          new URL("../../../packs/g01/v1/workflow.bpmn20.xml", import.meta.url),
+          new URL(
+            `../../../packs/${pack.manifest.id}/v1/workflow.bpmn20.xml`,
+            import.meta.url,
+          ),
           "utf8",
         ),
       );
@@ -271,8 +306,8 @@ export async function validatePack(input: unknown): Promise<{
       if (!forward.has(task) || !back.has(task))
         throw new Error(`Task ${task} không có đường đi start/end.`);
     if (
-      !pack.manifest.tasks[pack.evidence.submit.step]?.actions.includes(
-        "submit",
+      !pack.manifest.tasks[pack.evidence.submit.step]?.actions.some((a) =>
+        ["submit", "resolve"].includes(a),
       )
     )
       throw new Error("Evidence tham chiếu task/action sai.");
@@ -562,4 +597,15 @@ export function packsRouter(pool: pg.Pool, workflow: Flowable) {
     res.json({ id: row.id, packId: row.pack_id, version: row.version });
   });
   return router;
+}
+
+export async function bootstrapEnvironmentPack(
+  pool: pg.Pool,
+  workflow: Flowable,
+) {
+  const pack = await readPack(
+    fileURLToPath(new URL("../../../packs/g02/v1", import.meta.url)),
+  );
+  await installPack(pool, workflow, pack, null);
+  await activatePack(pool, workflow, "g02", "1.0.0", null, true);
 }

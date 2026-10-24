@@ -1,0 +1,37 @@
+{
+  "id": "g02",
+  "version": "1.0.0",
+  "name": "Môi trường PM2.5",
+  "adapter": "environment-v1",
+  "schema": "g02-case@1.0.0",
+  "workflow": "g02-environment@1.0.0",
+  "evidence": "g02-evidence@1.0.0",
+  "roles": {
+    "officer": "environment_officer"
+  },
+  "tasks": {
+    "verify": {
+      "role": "officer",
+      "actions": [
+        "confirm",
+        "dismiss"
+      ]
+    },
+    "repair": {
+      "role": "officer",
+      "actions": [
+        "save_work",
+        "resolve"
+      ]
+    }
+  },
+  "rule": {
+    "version": "pm25-demo@1.0.0",
+    "label": "Ngưỡng minh họa, không phải khuyến cáo sức khỏe",
+    "threshold": 35,
+    "openConsecutive": 2,
+    "recoveryConsecutive": 2,
+    "cooldownSeconds": 300,
+    "gapSeconds": 300
+  }
+}

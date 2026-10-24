@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
 import "./style.css";
+import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
 
@@ -17,6 +18,8 @@ type Task = {
   canComplete: boolean;
 };
 const roleNames: Record<string, string> = {
+  environment_officer: "Cán bộ môi trường",
+  environment_ingestor: "Nguồn phát lại",
   reporter: "Người báo",
   coordinator: "Điều phối",
   technician: "Kỹ thuật viên",
@@ -57,7 +60,9 @@ function date(value: string) {
 }
 
 function App() {
-  const [mode, setMode] = useState<"g01" | "foundation" | "packs">("g01");
+  const [mode, setMode] = useState<
+    "g01" | "foundation" | "packs" | "environment"
+  >("g01");
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
@@ -204,6 +209,14 @@ function App() {
               Gói nghiệp vụ
             </button>
           )}
+          {user?.roles.includes("environment_officer") && (
+            <button
+              className={`nav-item ${mode === "environment" ? "active" : ""}`}
+              onClick={() => setMode("environment")}
+            >
+              Môi trường PM2.5
+            </button>
+          )}
         </nav>
         <div className="sidebar-note">
           <span className="small-dot" />
@@ -228,11 +241,13 @@ function App() {
         <header className="topbar">
           <span>
             SchoolOps <span className="slash">/</span>{" "}
-            {mode === "g01"
-              ? "Sự cố cơ sở vật chất"
-              : mode === "packs"
-                ? "Gói nghiệp vụ"
-                : "Nhiệm vụ nền tảng"}
+            {mode === "environment"
+              ? "Môi trường PM2.5"
+              : mode === "g01"
+                ? "Sự cố cơ sở vật chất"
+                : mode === "packs"
+                  ? "Gói nghiệp vụ"
+                  : "Nhiệm vụ nền tảng"}
           </span>
           <span className="env-badge">
             <span className="small-dot" />
@@ -245,11 +260,13 @@ function App() {
               <div className="eyebrow">VẬN HÀNH TRƯỜNG HỌC</div>
               <h1>
                 {user
-                  ? mode === "g01"
-                    ? "Sự cố cơ sở vật chất"
-                    : mode === "packs"
-                      ? "Gói nghiệp vụ"
-                      : "Công việc của tôi"
+                  ? mode === "environment"
+                    ? "Môi trường PM2.5"
+                    : mode === "g01"
+                      ? "Sự cố cơ sở vật chất"
+                      : mode === "packs"
+                        ? "Gói nghiệp vụ"
+                        : "Công việc của tôi"
                   : "Một nơi để phối hợp xử lý."}
               </h1>
               <p className="intro">
@@ -323,6 +340,8 @@ function App() {
                 </div>
               </div>
             </section>
+          ) : mode === "environment" ? (
+            <Environment request={request} />
           ) : mode === "packs" ? (
             <Packs request={request} />
           ) : mode === "g01" ? (

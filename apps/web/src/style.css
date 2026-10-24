@@ -1127,3 +1127,33 @@ h3 {
     padding: 12px;
   }
 }
+
+.environment pre,
+.packs .mono {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.environment,
+.packs {
+  padding: 20px;
+  margin-bottom: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.environment .mono,
+.environment pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.environment .button {
+  max-width: 100%;
+  white-space: normal;
+}
+.environment .section-heading {
+  padding: 0 0 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}

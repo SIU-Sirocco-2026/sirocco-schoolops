@@ -6,6 +6,8 @@ export const roles = [
   "technician",
   "approver",
   "admin",
+  "environment_officer",
+  "environment_ingestor",
 ] as const;
 export type Role = (typeof roles)[number];
 export type Principal = {

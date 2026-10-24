@@ -20,6 +20,7 @@ async function permitted(
   id: unknown,
   user: Principal,
   lock = false,
+  packId = "g01",
 ) {
   if (!z.uuid().safeParse(id).success)
     throw new HttpError(400, "INVALID_ID", "Mã hồ sơ không hợp lệ.");
@@ -34,7 +35,11 @@ async function permitted(
       user.id,
     ])
   ).rows.map((r) => r.team_id as string);
-  if (!row || !canReadCase(user, row, teams))
+  if (
+    !row ||
+    (row.pack_id || "g01") !== packId ||
+    !canReadCase(user, row, teams)
+  )
     throw new HttpError(
       404,
       "NOT_FOUND",
@@ -97,11 +102,21 @@ export async function requireCleanEvidence(
     );
   return clean;
 }
-export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
+export function evidenceRouter(
+  pool: pg.Pool,
+  store?: EvidenceStore,
+  packId = "g01",
+) {
   const router = Router();
   router.get("/cases/:id/evidence", async (req, res) => {
     const user = res.locals.principal as Principal;
-    const { row, teams } = await permitted(pool, req.params.id, user);
+    const { row, teams } = await permitted(
+      pool,
+      req.params.id,
+      user,
+      false,
+      packId,
+    );
     const rows = await pool.query(
       "SELECT * FROM evidence WHERE case_id=$1 ORDER BY created_at,id",
       [req.params.id],
@@ -113,14 +128,22 @@ export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
         ((row.reporter_id === user.id &&
           user.roles.includes("reporter") &&
           ["verification", "supplement"].includes(row.status)) ||
-          caseActions(user, row, teams).includes("submit")),
+          caseActions(user, row, teams).some((a) =>
+            ["submit", "resolve"].includes(a),
+          )),
     });
   });
   router.post(
     "/cases/:id/evidence",
     async (req, res, next) => {
       try {
-        await permitted(pool, req.params.id, res.locals.principal);
+        await permitted(
+          pool,
+          req.params.id,
+          res.locals.principal,
+          false,
+          packId,
+        );
         next();
       } catch (e) {
         next(e);
@@ -158,7 +181,13 @@ export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
       const db = await pool.connect();
       try {
         await db.query("BEGIN");
-        const { row, teams } = await permitted(db, req.params.id, user, true);
+        const { row, teams } = await permitted(
+          db,
+          req.params.id,
+          user,
+          true,
+          packId,
+        );
         const member = (
           await db.query(
             "SELECT * FROM memberships WHERE subject_id=$1 FOR SHARE",
@@ -195,7 +224,9 @@ export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
           ((row.reporter_id === user.id &&
             user.roles.includes("reporter") &&
             ["verification", "supplement"].includes(row.status)) ||
-            caseActions(user, row, teams).includes("submit"));
+            caseActions(user, row, teams).some((a) =>
+              ["submit", "resolve"].includes(a),
+            ));
         if (!mayUpload)
           throw new HttpError(
             403,
@@ -251,7 +282,13 @@ export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
     },
   );
   router.get("/cases/:id/evidence/:evidenceId/download", async (req, res) => {
-    const { row } = await permitted(pool, req.params.id, res.locals.principal);
+    const { row } = await permitted(
+      pool,
+      req.params.id,
+      res.locals.principal,
+      false,
+      packId,
+    );
     if (!z.uuid().safeParse(req.params.evidenceId).success)
       throw new HttpError(400, "INVALID_ID", "Mã bằng chứng không hợp lệ.");
     const file = (
@@ -292,10 +329,16 @@ export function evidenceRouter(pool: pg.Pool, store?: EvidenceStore) {
         "MEMBERSHIP_DISABLED",
         "Quyền truy cập đã bị thu hồi.",
       );
-    await permitted(pool, req.params.id, {
-      ...res.locals.principal,
-      roles: member.roles,
-    });
+    await permitted(
+      pool,
+      req.params.id,
+      {
+        ...res.locals.principal,
+        roles: member.roles,
+      },
+      false,
+      packId,
+    );
     res.set({
       "Content-Type": file.mime,
       "Content-Disposition": `attachment; filename="evidence"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,

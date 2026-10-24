@@ -1,3 +1,4 @@
+import { createCaseRecord } from "./case-create.js";
 import { Router } from "express";
 import { activePack, validatePayload } from "./packs.js";
 import { enqueueCommand, executeCommand, recordCaseEvent } from "./outbox.js";
@@ -33,6 +34,11 @@ const work = {
   result: z.string().trim().min(5).max(4000),
 };
 const actionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("confirm"), revision }).strict(),
+  z.object({ action: z.literal("dismiss"), revision, reason }).strict(),
+  z
+    .object({ action: z.literal("resolve"), revision, reason, ...work })
+    .strict(),
   z.object({ action: z.literal("accept"), revision }).strict(),
   z.object({ action: z.literal("return_info"), revision, reason }).strict(),
   z
@@ -84,6 +90,7 @@ type CaseRow = CaseAccess & {
   };
 };
 type Options = {
+  packId?: string;
   pool: pg.Pool;
   workflow: Flowable;
   definitionId: () => string | undefined;
@@ -145,6 +152,7 @@ async function requireRole(
 function view(row: CaseRow, user: Principal, teams: string[]) {
   return {
     id: row.id,
+    packId: row.pack_id || "g01",
     code: row.code,
     title: row.title,
     roomId: row.room_id,
@@ -228,7 +236,13 @@ async function checkEngine(workflow: Flowable, row: CaseRow) {
   }
   return task!;
 }
-export function g01Router({ pool, workflow, definitionId, store }: Options) {
+export function g01Router({
+  pool,
+  workflow,
+  definitionId,
+  store,
+  packId = "g01",
+}: Options) {
   const router = Router();
   router.get("/catalog", async (_req, res) => {
     const user = res.locals.principal as Principal;
@@ -236,7 +250,7 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       pool.query("SELECT * FROM rooms ORDER BY id"),
       pool.query("SELECT * FROM assets ORDER BY id"),
       pool.query(
-        "SELECT subject_id AS id,display_name AS name,roles FROM memberships WHERE enabled AND roles && ARRAY['coordinator','technician','approver']::text[] ORDER BY display_name",
+        "SELECT subject_id AS id,display_name AS name,roles FROM memberships WHERE enabled AND roles && ARRAY['coordinator','technician','approver','environment_officer']::text[] ORDER BY display_name",
       ),
       pool.query(
         "SELECT t.id,t.name FROM teams t WHERE EXISTS(SELECT 1 FROM team_members tm JOIN memberships m ON m.subject_id=tm.subject_id WHERE tm.team_id=t.id AND m.enabled AND 'technician'=ANY(m.roles)) ORDER BY t.id",
@@ -247,15 +261,15 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       assets: assets.rows,
       people: people.rows,
       teams: teams.rows,
-      canCreate: user.roles.includes("reporter"),
-      versions: await activePack(pool).then((r) => ({
+      canCreate: packId === "g01" && user.roles.includes("reporter"),
+      versions: await activePack(pool, packId).then((r) => ({
         package: `${r.pack_id}@${r.version}`,
         schema: r.bundle.manifest.schema,
         workflow: r.bundle.manifest.workflow,
       })),
     });
   });
-  router.use(evidenceRouter(pool, store));
+  router.use(evidenceRouter(pool, store, packId));
   router.get("/reports", async (req, res) => {
     const user = res.locals.principal as Principal,
       teams = await teamsFor(pool, user);
@@ -263,8 +277,8 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       `SELECT count(*) FILTER(WHERE status<>'closed')::int AS open,
       count(*) FILTER(WHERE status<>'closed' AND due_at<now())::int AS overdue,
       count(*) FILTER(WHERE status='closed')::int AS completed,
-      count(*)::int AS total FROM cases WHERE ${caseScopeSql}`,
-      [user.id, user.roles, teams],
+      count(*)::int AS total FROM cases WHERE ${caseScopeSql} AND pack_id=$4`,
+      [user.id, user.roles, teams, packId],
     );
     res.json({ ...rows.rows[0], generatedAt: new Date().toISOString() });
   });
@@ -287,11 +301,11 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
     const { status, q, mine, page, bucket } = filter.data;
     const result = await pool.query<CaseRow>(
       `SELECT * FROM cases WHERE
-      ${caseScopeSql}
+      ${caseScopeSql} AND pack_id=$7
       AND ($4::text IS NULL OR status=$4) AND ($5::text IS NULL OR strpos(lower(code || ' ' || title || ' ' || description),lower($5))>0)
       AND ($6='all' OR ($6='open' AND status<>'closed') OR ($6='overdue' AND status<>'closed' AND due_at<now()) OR ($6='completed' AND status='closed'))
       ORDER BY created_at DESC,id`,
-      [user.id, user.roles, teams, status || null, q || null, bucket],
+      [user.id, user.roles, teams, status || null, q || null, bucket, packId],
     );
     const items = result.rows
       .map((r) => view(r, user, teams))
@@ -312,7 +326,11 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
         req.params.id,
       ])
     ).rows[0];
-    if (!row || !canReadCase(user, row, teams))
+    if (
+      !row ||
+      (row.pack_id || "g01") !== packId ||
+      !canReadCase(user, row, teams)
+    )
       fail(
         404,
         "NOT_FOUND",
@@ -334,7 +352,7 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
   });
   router.post("/cases", async (req, res) => {
     const user = res.locals.principal as Principal;
-    if (!user.roles.includes("reporter"))
+    if (packId !== "g01" || !user.roles.includes("reporter"))
       fail(403, "FORBIDDEN", "Chỉ người báo được tạo hồ sơ G01.");
     const input = report.safeParse(req.body),
       key = z.uuid().safeParse(req.headers["idempotency-key"]);
@@ -381,29 +399,16 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       ).rows[0];
       if (!coordinator)
         fail(409, "NO_COORDINATOR", "Chưa có điều phối được cấp quyền.");
-      const inserted = await client.query<CaseRow>(
-        `INSERT INTO cases(id,title,room_id,asset_id,description,reporter_id,coordinator_id,status,sync_status,definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version,pack_revision_id) VALUES($1,$2,$3,$4,$5,$6,$7,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
-        [
-          randomUUID(),
-          data.title,
-          data.roomId,
-          data.assetId,
-          data.description,
-          user.id,
-          coordinator.subject_id,
-          active.definition_id,
-          `${active.pack_id}@${active.version}`,
-          active.bundle.manifest.schema,
-          active.bundle.manifest.workflow,
-          JSON.stringify(active.bundle.schema),
-          key.data,
-          hash,
-          JSON.stringify(active.bundle.evidence),
-          active.bundle.evidence.version,
-          active.id,
-        ],
-      );
-      if (!inserted.rowCount) {
+      const inserted = await createCaseRecord(client, {
+        payload: data,
+        pack: active,
+        reporterId: user.id,
+        coordinatorId: coordinator.subject_id,
+        actorId: user.id,
+        key: key.data,
+        hash,
+      });
+      if (!inserted) {
         const old = (
           await client.query<CaseRow>(
             "SELECT * FROM cases WHERE reporter_id=$1 AND idempotency_key=$2",
@@ -421,25 +426,8 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
           .status(old.sync_status === "ready" ? 200 : 202)
           .json({ item: view(old, user, []) });
       }
-      row = inserted.rows[0]!;
-      await event(client, row, user.id, "created", null, data);
-      commandId = await enqueueCommand(
-        client,
-        row,
-        user.id,
-        "created",
-        row.status,
-        row,
-        {
-          coordinator: row.coordinator_id,
-          reporter: user.id,
-          technician: "",
-          team: "",
-          approver: "",
-          dueAt: "",
-        },
-        data,
-      );
+      row = inserted.row;
+      commandId = inserted.commandId;
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -488,7 +476,11 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
         )
       ).rows[0];
       const teams = await teamsFor(client, user);
-      if (!current || !canReadCase(user, current, teams))
+      if (
+        !current ||
+        (current.pack_id || "g01") !== packId ||
+        !canReadCase(user, current, teams)
+      )
         fail(
           404,
           "NOT_FOUND",
@@ -509,6 +501,28 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
           "Hồ sơ đã thay đổi. Làm mới trước khi thao tác tiếp.",
         );
       next = { ...row, revision: row.revision + 1 };
+      if (input.action === "confirm") {
+        next.status = "in_progress";
+        variables.confirmed = true;
+      }
+      if (input.action === "dismiss") {
+        next.status = "closed";
+        variables.confirmed = false;
+        next.decision_by = user.id;
+        details = { reason: input.reason };
+      }
+      if (input.action === "resolve") {
+        details = {
+          reason: input.reason,
+          measures: input.measures,
+          result: input.result,
+          evidence: await requireCleanEvidence(client, row),
+        };
+        next.measures = input.measures;
+        next.result = input.result;
+        next.status = "closed";
+        next.decision_by = user.id;
+      }
       if (input.action === "accept") {
         next.status = "assignment";
         variables.verified = true;

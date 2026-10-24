@@ -63,6 +63,9 @@ export const statusNames: Record<string, string> = {
   closed: "Đã đóng",
 };
 const actionNames: Record<string, string> = {
+  confirm: "Xác minh cảnh báo",
+  dismiss: "Đóng sau xác minh",
+  resolve: "Hoàn tất ứng phó và đóng",
   created: "Báo sự cố",
   accept: "Tiếp nhận",
   return_info: "Yêu cầu bổ sung",
@@ -91,7 +94,19 @@ const initial = {
   description: "",
 };
 
-export function G01({ request }: { request: Request }) {
+export function G01({
+  request,
+  prefix = "g01",
+  initialCase = null,
+}: {
+  request: Request;
+  prefix?: string;
+  initialCase?: string | null;
+}) {
+  const basePath = `/api/${prefix}`;
+  useEffect(() => {
+    if (initialCase) setSelected(initialCase);
+  }, [initialCase]);
   const [bucket, setBucket] = useState("all"),
     [evidenceReady, setEvidenceReady] = useState(false);
   const [summary, setSummary] = useState<{
@@ -129,13 +144,13 @@ export function G01({ request }: { request: Request }) {
     if (status) params.set("status", status);
     if (search) params.set("q", search);
     const [list, report] = await Promise.all([
-      request<{ items: Case[]; total: number }>(`/api/g01/cases?${params}`),
+      request<{ items: Case[]; total: number }>(`${basePath}/cases?${params}`),
       request<{
         open: number;
         overdue: number;
         completed: number;
         total: number;
-      }>("/api/g01/reports"),
+      }>(`${basePath}/reports`),
     ]);
     if (n === generation.current) {
       setSummary(report);
@@ -145,11 +160,11 @@ export function G01({ request }: { request: Request }) {
   }
   async function loadDetail(id: string) {
     const n = ++detailGeneration.current;
-    const data = await request<Detail>(`/api/g01/cases/${id}`);
+    const data = await request<Detail>(`${basePath}/cases/${id}`);
     if (n === detailGeneration.current) setDetail(data);
   }
   useEffect(() => {
-    void request<Catalog>("/api/g01/catalog")
+    void request<Catalog>(`${basePath}/catalog`)
       .then(setCatalog)
       .catch((e) => setError(e.message));
   }, []);
@@ -197,7 +212,7 @@ export function G01({ request }: { request: Request }) {
     setNotice("");
     try {
       const data = await request<{ item: Case; message?: string }>(
-        "/api/g01/cases",
+        `${basePath}/cases`,
         {
           method: "POST",
           headers: { "Idempotency-Key": key },
@@ -226,7 +241,7 @@ export function G01({ request }: { request: Request }) {
     setNotice("");
     try {
       const data = await request<{ item: Case; message?: string }>(
-        `/api/g01/cases/${detail.item.id}/actions`,
+        `${basePath}/cases/${detail.item.id}/actions`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -288,7 +303,7 @@ export function G01({ request }: { request: Request }) {
       )}
       <div className="g01-toolbar">
         <div>
-          <h2>Hồ sơ G01</h2>
+          <h2>Hồ sơ {prefix.toUpperCase()}</h2>
           <p className="intro">
             Báo hỏng, phối hợp xử lý và nghiệm thu tại một nơi.
           </p>
@@ -548,6 +563,7 @@ export function G01({ request }: { request: Request }) {
                 request={request}
                 caseId={detail.item.id}
                 taskId={detail.item.taskId}
+                prefix={prefix}
                 policy={detail.item.evidencePolicy.submit}
                 onReady={setEvidenceReady}
               />
@@ -787,6 +803,37 @@ function Actions({
   return (
     <div className="action-panel">
       <h3>Bước tiếp theo</h3>
+      {has("confirm") && (
+        <button
+          className="button primary"
+          disabled={busy}
+          onClick={() => void act("confirm")}
+        >
+          Xác nhận cần xử lý
+        </button>
+      )}
+      {has("dismiss") && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void act("dismiss", { reason });
+          }}
+        >
+          <label>
+            Lý do đóng sau xác minh
+            <textarea
+              aria-label="Lý do đóng sau xác minh"
+              required
+              minLength={5}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </label>
+          <button className="button secondary" disabled={busy}>
+            Đóng sau xác minh
+          </button>
+        </form>
+      )}
       {has("accept") && (
         <button
           className="button primary"
@@ -925,14 +972,18 @@ function Actions({
           Nhận xử lý
         </button>
       )}
-      {has("submit") && (
+      {(has("submit") || has("resolve")) && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const action =
               (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ||
               "submit";
-            void act(action, { measures, result });
+            void act(action, {
+              measures,
+              result,
+              ...(action === "resolve" ? { reason } : {}),
+            });
           }}
         >
           <label>
@@ -959,6 +1010,17 @@ function Actions({
               disabled={busy}
             />
           </label>
+          {has("resolve") && (
+            <label>
+              Lý do đóng hồ sơ
+              <textarea
+                aria-label="Lý do đóng hồ sơ"
+                value={reason}
+                minLength={5}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+          )}
           <div className="action-buttons">
             <button
               className="button secondary"
@@ -971,10 +1033,10 @@ function Actions({
             <button
               className="button primary"
               type="submit"
-              value="submit"
+              value={has("resolve") ? "resolve" : "submit"}
               disabled={busy || !evidenceReady}
             >
-              Gửi nghiệm thu
+              {has("resolve") ? "Hoàn tất ứng phó và đóng" : "Gửi nghiệm thu"}
             </button>
             {!evidenceReady && (
               <p>

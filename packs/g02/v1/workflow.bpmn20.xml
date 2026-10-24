@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="https://sirocco.schoolops/g02/v1">
+ <process id="g02-environment-v1" name="G02 — Xử lý cảnh báo môi trường" isExecutable="true">
+  <startEvent id="start"/><sequenceFlow id="startVerify" sourceRef="start" targetRef="verify"/>
+  <userTask id="verify" name="Xác minh cảnh báo" flowable:assignee="${coordinator}"/>
+  <sequenceFlow id="verifyDecision" sourceRef="verify" targetRef="decision"/>
+  <exclusiveGateway id="decision" default="dismissed"/>
+  <sequenceFlow id="confirmed" sourceRef="decision" targetRef="repair"><conditionExpression xsi:type="tFormalExpression"><![CDATA[${confirmed == true}]]></conditionExpression></sequenceFlow>
+  <sequenceFlow id="dismissed" sourceRef="decision" targetRef="end"/>
+  <userTask id="repair" name="Ghi nhận ứng phó" flowable:assignee="${technician}"/>
+  <sequenceFlow id="resolved" sourceRef="repair" targetRef="end"/><endEvent id="end"/>
+ </process>
+</definitions>

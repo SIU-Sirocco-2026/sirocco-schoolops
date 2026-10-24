@@ -67,6 +67,20 @@ const users = [
     "admin",
   ],
 ];
+users.push(
+  [
+    "66666666-6666-4666-8666-666666666666",
+    "environment",
+    "Cán bộ môi trường",
+    "environment_officer",
+  ],
+  [
+    "77777777-7777-4777-8777-777777777777",
+    "sensor",
+    "Nguồn phát lại",
+    "environment_ingestor",
+  ],
+);
 const audience = {
   name: "schoolops-audience",
   protocol: "openid-connect",
@@ -141,7 +155,7 @@ if (process.platform !== "win32") {
 console.log(
   "Đã tạo cấu hình local. Thông tin đăng nhập nằm trong .env (DEMO_PASSWORD).",
 );
-console.log("Tài khoản: reporter, coordinator, technician, approver, admin.");
+console.log("Tài khoản demo: " + users.map((u) => u[1]).join(", ") + ".");
 console.log(
   "Chạy pnpm demo:up; mở http://localhost:8088 khi dịch vụ sẵn sàng.",
 );

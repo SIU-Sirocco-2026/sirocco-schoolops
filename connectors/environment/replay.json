@@ -1,0 +1,26 @@
+{
+  "sourceId": "demo-pm25",
+  "stationId": "A101-PM25",
+  "label": "replayed",
+  "description": "Bộ phát lại xác định; ngưỡng minh họa, không phải khuyến cáo sức khỏe.",
+  "events": [
+    {"id":"normal","second":0,"value":10,"unit":"ug/m3","quality":"valid"},
+    {"id":"high-1","second":60,"value":45,"unit":"ug/m3","quality":"valid"},
+    {"id":"high-2","second":120,"value":0.05,"unit":"mg/m3","quality":"valid","opens":1},
+    {"repeat":"high-2"},
+    {"id":"bad-unit","second":150,"value":90,"unit":"ppm","quality":"invalid"},
+    {"id":"late","second":90,"value":100,"unit":"ug/m3","quality":"late"},
+    {"id":"high-3","second":180,"value":55,"unit":"ug/m3","quality":"valid"},
+    {"id":"low-1","second":240,"value":20,"unit":"ug/m3","quality":"valid"},
+    {"id":"low-2","second":300,"value":15,"unit":"ug/m3","quality":"valid","recovers":1},
+    {"id":"suppressed-1","second":360,"value":45,"unit":"ug/m3","quality":"valid","suppressed":true},
+    {"id":"suppressed-2","second":420,"value":50,"unit":"ug/m3","quality":"valid","suppressed":true},
+    {"id":"normal-2","second":600,"value":10,"unit":"ug/m3","quality":"valid"},
+    {"id":"candidate","second":660,"value":45,"unit":"ug/m3","quality":"valid"},
+    {"id":"gap-recovered","second":1260,"value":55,"unit":"ug/m3","quality":"valid","gap":true},
+    {"id":"high-after-gap","second":1320,"value":50,"unit":"ug/m3","quality":"valid","opens":2},
+    {"id":"last-low-1","second":1380,"value":10,"unit":"ug/m3","quality":"valid"},
+    {"id":"last-low-2","second":1440,"value":12,"unit":"ug/m3","quality":"valid","recovers":2}
+  ],
+  "expected":{"observations":16,"duplicates":1,"invalid":1,"late":1,"episodes":2,"gaps":1,"suppressed":2}
+}

@@ -28,7 +28,9 @@ export function Evidence({
   taskId,
   onReady,
   policy,
+  prefix = "g01",
 }: {
+  prefix?: string;
   request: Request;
   caseId: string;
   taskId: string | null;
@@ -49,7 +51,7 @@ export function Evidence({
         const data = await request<{
           items: FileEvidence[];
           canUpload: boolean;
-        }>(`/api/g01/cases/${caseId}/evidence`);
+        }>(`/api/${prefix}/cases/${caseId}/evidence`);
         if (!active) return;
         setFiles(data.items);
         setCanUpload(data.canUpload);
@@ -85,7 +87,7 @@ export function Evidence({
     setBusy(true);
     setError("");
     try {
-      await request(`/api/g01/cases/${caseId}/evidence`, {
+      await request(`/api/${prefix}/cases/${caseId}/evidence`, {
         method: "POST",
         headers: {
           "Content-Type": "application/octet-stream",
@@ -98,7 +100,7 @@ export function Evidence({
       setFile(null);
       if (input.current) input.current.value = "";
       const data = await request<{ items: FileEvidence[]; canUpload: boolean }>(
-        `/api/g01/cases/${caseId}/evidence`,
+        `/api/${prefix}/cases/${caseId}/evidence`,
       );
       setFiles(data.items);
     } catch (e) {
@@ -111,7 +113,7 @@ export function Evidence({
     setError("");
     try {
       const blob = await request<Blob>(
-        `/api/g01/cases/${caseId}/evidence/${f.id}/download`,
+        `/api/${prefix}/cases/${caseId}/evidence/${f.id}/download`,
       );
       const url = URL.createObjectURL(blob),
         link = document.createElement("a");
