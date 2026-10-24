@@ -25,9 +25,9 @@ export async function createCaseRecord(
   validatePayload(r.bundle.schema, p);
   const inserted = await db.query(
     `INSERT INTO cases(id,code,title,room_id,asset_id,description,reporter_id,coordinator_id,technician_id,status,sync_status,
-  definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version,pack_revision_id,pack_id)
-  VALUES($1,upper($18)||'-'||lpad(nextval('g01_case_number')::text,6,'0'),$2,$3,$4,$5,$6,$7,$19,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-  ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
+  definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version,pack_revision_id,pack_id,access_ids)
+  VALUES($1,upper($18)||'-'||lpad(nextval('g01_case_number')::text,6,'0'),$2,$3,$4,$5,$6,$7,$19,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$20)
+  ON CONFLICT(pack_id,reporter_id,idempotency_key) DO NOTHING RETURNING *`,
     [
       randomUUID(),
       p.title,
@@ -48,6 +48,7 @@ export async function createCaseRecord(
       r.id,
       r.pack_id,
       input.technicianId || null,
+      r.pack_id === "g03" ? [input.reporterId, input.coordinatorId] : [],
     ],
   );
   if (!inserted.rowCount) return null;

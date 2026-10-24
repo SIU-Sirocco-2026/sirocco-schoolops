@@ -1,6 +1,7 @@
 import pg from "pg";
+import { safetyMigration } from "./safety.js";
 import { phase3Migration } from "./phase3-db.js";
-import {environmentMigration} from "./environment-db.js";
+import { environmentMigration } from "./environment-db.js";
 import { packsMigration } from "./packs.js";
 
 export const demoUsers = [
@@ -130,6 +131,7 @@ export async function migrate() {
     await phase3Migration(client);
     await packsMigration(client);
     await environmentMigration(client);
+    await safetyMigration(client);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

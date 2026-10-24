@@ -4,7 +4,11 @@ import type pg from "pg";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import type { Principal } from "./auth.js";
-import { canReadCase, caseActions } from "./g01-policy.js";
+import {
+  canReadCase,
+  caseActions,
+  canUploadCaseEvidence,
+} from "./g01-policy.js";
 import { HttpError } from "./errors.js";
 import { recordCaseEvent } from "./outbox.js";
 import {
@@ -123,14 +127,7 @@ export function evidenceRouter(
     );
     res.json({
       items: rows.rows.map(evidenceView),
-      canUpload:
-        row.sync_status === "ready" &&
-        ((row.reporter_id === user.id &&
-          user.roles.includes("reporter") &&
-          ["verification", "supplement"].includes(row.status)) ||
-          caseActions(user, row, teams).some((a) =>
-            ["submit", "resolve"].includes(a),
-          )),
+      canUpload: canUploadCaseEvidence(user, row, teams),
     });
   });
   router.post(
@@ -219,14 +216,7 @@ export function evidenceRouter(
           await db.query("COMMIT");
           return res.json({ item: evidenceView(old) });
         }
-        const mayUpload =
-          row.sync_status === "ready" &&
-          ((row.reporter_id === user.id &&
-            user.roles.includes("reporter") &&
-            ["verification", "supplement"].includes(row.status)) ||
-            caseActions(user, row, teams).some((a) =>
-              ["submit", "resolve"].includes(a),
-            ));
+        const mayUpload = canUploadCaseEvidence(user, row, teams);
         if (!mayUpload)
           throw new HttpError(
             403,

@@ -1,0 +1,56 @@
+{
+  "id": "g03",
+  "version": "1.0.0",
+  "name": "An toàn hạn chế — giả lập",
+  "adapter": "safety-v1",
+  "schema": "g03-case@1.0.0",
+  "workflow": "g03-safety@1.0.0",
+  "evidence": "g03-evidence@1.0.0",
+  "roles": {
+    "reporter": "safety_reporter",
+    "coordinator": "safety_officer",
+    "technician": "safety_officer",
+    "approver": "safety_officer"
+  },
+  "tasks": {
+    "verify": {
+      "role": "coordinator",
+      "actions": [
+        "accept",
+        "return_info"
+      ]
+    },
+    "supplement": {
+      "role": "reporter",
+      "actions": [
+        "resubmit"
+      ]
+    },
+    "assign": {
+      "role": "coordinator",
+      "actions": [
+        "assign"
+      ]
+    },
+    "receive": {
+      "role": "technician",
+      "actions": [
+        "receive"
+      ]
+    },
+    "repair": {
+      "role": "technician",
+      "actions": [
+        "save_work",
+        "submit"
+      ]
+    },
+    "approve": {
+      "role": "approver",
+      "actions": [
+        "approve",
+        "return_work"
+      ]
+    }
+  }
+}

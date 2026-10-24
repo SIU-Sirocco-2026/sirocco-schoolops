@@ -69,9 +69,9 @@ export async function recordCaseEvent(
   details: Record<string, unknown>,
   commandId?: string,
 ) {
-  await db.query(
+  const audit = await db.query(
     `INSERT INTO case_events(case_id,actor_id,action,from_status,to_status,details,revision,command_id)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
     [
       row.id,
       actor,
@@ -89,6 +89,12 @@ export async function recordCaseEvent(
       commandId || null,
     ],
   );
+  if (row.pack_id === "g03")
+    for (const recipient of [...new Set<string>(row.access_ids || [])])
+      await db.query(
+        "INSERT INTO case_notifications(case_id,event_id,recipient_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
+        [row.id, audit.rows[0].id, recipient],
+      );
 }
 
 // API and workers use the same durable command executor. Locks span the network mutation;
@@ -180,7 +186,7 @@ export async function executeCommand(
         `UPDATE cases SET title=$2,room_id=$3,asset_id=$4,description=$5,
       technician_id=$6,team_id=$7,approver_id=$8,due_at=$9,status=$10,task_id=$11,task_key=$12,
       measures=$13,result=$14,decision_by=$15,closed_at=CASE WHEN $10='closed' THEN now() ELSE closed_at END,
-      process_id=$16,sync_status='ready',updated_at=now() WHERE id=$1 RETURNING *`,
+      process_id=$16,access_ids=$17,sync_status='ready',updated_at=now() WHERE id=$1 RETURNING *`,
         [
           row.id,
           next.title,
@@ -198,6 +204,7 @@ export async function executeCommand(
           next.result,
           next.decision_by,
           processId,
+          next.access_ids || [],
         ],
       )
     ).rows[0];

@@ -3,7 +3,11 @@ import { remoteKey } from "./auth.js";
 import { migrate, pool, technicianId } from "./db.js";
 import { Flowable } from "./workflow.js";
 import { ObjectStore } from "./storage.js";
-import { bootstrapPacks,bootstrapEnvironmentPack } from "./packs.js";
+import {
+  bootstrapPacks,
+  bootstrapEnvironmentPack,
+  bootstrapSafetyPack,
+} from "./packs.js";
 
 function required(name: string) {
   const value = process.env[name];
@@ -34,7 +38,8 @@ async function initialize() {
       "sirocco-g01-v1-0-0",
     );
     await bootstrapPacks(pool, workflow, g01Definition);
-    await bootstrapEnvironmentPack(pool,workflow);
+    await bootstrapEnvironmentPack(pool, workflow);
+    await bootstrapSafetyPack(pool, workflow);
     initialized = true;
     console.log("Database, foundation and G01 workflows ready.");
   } catch (error) {

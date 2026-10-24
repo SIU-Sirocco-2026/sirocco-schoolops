@@ -13,10 +13,10 @@ const version = z.string().regex(/^\d+\.\d+\.\d+$/);
 const ref = z.string().regex(/^[a-z][a-z0-9-]*@\d+\.\d+\.\d+$/);
 export const manifestSchema = z
   .object({
-    id: z.enum(["g01", "g02"]),
+    id: z.enum(["g01", "g02", "g03"]),
     version,
     name: z.string().min(3).max(120),
-    adapter: z.enum(["facility-v1", "environment-v1"]),
+    adapter: z.enum(["facility-v1", "environment-v1", "safety-v1"]),
     schema: ref,
     workflow: ref,
     evidence: ref,
@@ -28,6 +28,8 @@ export const manifestSchema = z
         "technician",
         "approver",
         "environment_officer",
+        "safety_reporter",
+        "safety_officer",
       ]),
     ),
     rule: z
@@ -208,17 +210,28 @@ export async function validatePack(input: unknown): Promise<{
       pack.evidence.version !== pack.manifest.evidence
     )
       throw new Error("Tham chiếu schema/evidence không khớp manifest.");
-    const env = pack.manifest.id === "g02";
-    if (pack.manifest.adapter !== (env ? "environment-v1" : "facility-v1"))
+    const env = pack.manifest.id === "g02",
+      restricted = pack.manifest.id === "g03";
+    if (
+      pack.manifest.adapter !==
+      (env ? "environment-v1" : restricted ? "safety-v1" : "facility-v1")
+    )
       throw new Error("Adapter không đúng gói.");
     const expectedRoles = env
       ? { officer: "environment_officer" }
-      : {
-          reporter: "reporter",
-          coordinator: "coordinator",
-          technician: "technician",
-          approver: "approver",
-        };
+      : restricted
+        ? {
+            reporter: "safety_reporter",
+            coordinator: "safety_officer",
+            technician: "safety_officer",
+            approver: "safety_officer",
+          }
+        : {
+            reporter: "reporter",
+            coordinator: "coordinator",
+            technician: "technician",
+            approver: "approver",
+          };
     if (canonical(pack.manifest.roles) !== canonical(expectedRoles))
       throw new Error("Role ngoài hợp đồng adapter hỗ trợ.");
     const expectedTasks = env
@@ -264,6 +277,13 @@ export async function validatePack(input: unknown): Promise<{
       );
     if (!/^[a-z][a-z0-9-]{2,80}$/.test(actual.processId))
       throw new Error("Process ID không hợp lệ.");
+    const [workflowName, workflowVersion] = pack.manifest.workflow.split("@");
+    if (
+      actual.processId !== `${workflowName}-v${workflowVersion!.split(".")[0]}`
+    )
+      throw new Error(
+        "Manifest workflow không tham chiếu đúng process ID (tên-v<major>) trong BPMN.",
+      );
     // This adapter deliberately supports one audited BPMN topology, including its
     // variables/conditions. Names and process ID may vary; executable extensions may not.
     if (canonical(actual.normalized) !== canonical(trusted.normalized))
@@ -608,4 +628,12 @@ export async function bootstrapEnvironmentPack(
   );
   await installPack(pool, workflow, pack, null);
   await activatePack(pool, workflow, "g02", "1.0.0", null, true);
+}
+
+export async function bootstrapSafetyPack(pool: pg.Pool, workflow: Flowable) {
+  const pack = await readPack(
+    fileURLToPath(new URL("../../../packs/g03/v1", import.meta.url)),
+  );
+  await installPack(pool, workflow, pack, null);
+  await activatePack(pool, workflow, "g03", "1.0.0", null, true);
 }

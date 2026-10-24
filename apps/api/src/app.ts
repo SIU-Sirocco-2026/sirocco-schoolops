@@ -15,6 +15,7 @@ import { HttpError } from "./errors.js";
 import { g01Router } from "./g01.js";
 import type { EvidenceStore } from "./storage.js";
 import { packsRouter } from "./packs.js";
+import { safetyRouter } from "./safety.js";
 import { environmentRouter } from "./environment.js";
 
 type Options = {
@@ -77,7 +78,7 @@ export function createApp(options: Options) {
         realm: "sirocco",
         clientId: "schoolops-web",
       },
-      phase: 5,
+      phase: 6,
     }),
   );
   app.use("/api", async (req, res, next) => {
@@ -129,6 +130,17 @@ export function createApp(options: Options) {
   });
   app.get("/api/me", (_req, res) => res.json({ user: res.locals.principal }));
   app.use("/api/packs", packsRouter(options.pool, options.workflow));
+  app.use("/api/g03", safetyRouter(options.pool));
+  app.use(
+    "/api/g03",
+    g01Router({
+      pool: options.pool,
+      workflow: options.workflow,
+      definitionId: () => undefined,
+      store: options.store,
+      packId: "g03",
+    }),
+  );
   app.use("/api/g02", environmentRouter(options.pool, options.workflow));
   app.use(
     "/api/g02",

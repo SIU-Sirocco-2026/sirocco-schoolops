@@ -12,7 +12,7 @@ test("complete G01 v1/v2 bundles pass schema, seed, role/action and supported BP
   );
   assert.equal((await validatePack(v2)).valid, true);
   assert.equal(canonical({ b: 1, a: 2 }), canonical({ a: 2, b: 1 }));
-  assert.deepEqual(JSON.parse(canonical(pack)),pack);
+  assert.deepEqual(JSON.parse(canonical(pack)), pack);
 });
 test("package validator rejects dangling roles, actions, tasks, schema/evidence refs, invalid seeds, duplicate IDs and unsafe BPMN", async () => {
   const mutations = [
@@ -20,6 +20,7 @@ test("package validator rejects dangling roles, actions, tasks, schema/evidence 
     (p: any) => p.manifest.tasks.repair.actions.push("delete_all"),
     (p: any) => delete p.manifest.tasks.approve,
     (p: any) => (p.schema.$id = "wrong"),
+    (p: any) => (p.manifest.workflow = "missing-workflow@1.0.0"),
     (p: any) => (p.evidence.submit.step = "missing"),
     (p: any) => (p.seed[0].title = 4),
     (p: any) => (p.schema.properties.title = { type: "imaginary" }),

@@ -250,7 +250,12 @@ export function g01Router({
       pool.query("SELECT * FROM rooms ORDER BY id"),
       pool.query("SELECT * FROM assets ORDER BY id"),
       pool.query(
-        "SELECT subject_id AS id,display_name AS name,roles FROM memberships WHERE enabled AND roles && ARRAY['coordinator','technician','approver','environment_officer']::text[] ORDER BY display_name",
+        "SELECT subject_id AS id,display_name AS name,roles FROM memberships WHERE enabled AND roles && $1::text[] ORDER BY display_name",
+        [
+          packId === "g03"
+            ? ["safety_officer"]
+            : ["coordinator", "technician", "approver", "environment_officer"],
+        ],
       ),
       pool.query(
         "SELECT t.id,t.name FROM teams t WHERE EXISTS(SELECT 1 FROM team_members tm JOIN memberships m ON m.subject_id=tm.subject_id WHERE tm.team_id=t.id AND m.enabled AND 'technician'=ANY(m.roles)) ORDER BY t.id",
@@ -259,9 +264,18 @@ export function g01Router({
     res.json({
       rooms: rooms.rows,
       assets: assets.rows,
-      people: people.rows,
-      teams: teams.rows,
-      canCreate: packId === "g01" && user.roles.includes("reporter"),
+      people: people.rows.map((p) =>
+        packId === "g03"
+          ? { ...p, roles: ["coordinator", "technician", "approver"] }
+          : p,
+      ),
+      teams: packId === "g03" ? [] : teams.rows,
+      canCreate:
+        ["g01", "g03"].includes(packId) &&
+        user.roles.some(
+          (r) => r === (packId === "g03" ? "safety_reporter" : "reporter"),
+        ),
+      canAudit: packId === "g03" && user.roles.includes("safety_officer"),
       versions: await activePack(pool, packId).then((r) => ({
         package: `${r.pack_id}@${r.version}`,
         schema: r.bundle.manifest.schema,
@@ -352,8 +366,17 @@ export function g01Router({
   });
   router.post("/cases", async (req, res) => {
     const user = res.locals.principal as Principal;
-    if (packId !== "g01" || !user.roles.includes("reporter"))
-      fail(403, "FORBIDDEN", "Chỉ người báo được tạo hồ sơ G01.");
+    if (
+      !["g01", "g03"].includes(packId) ||
+      !user.roles.some(
+        (r) => r === (packId === "g03" ? "safety_reporter" : "reporter"),
+      )
+    )
+      fail(
+        403,
+        "FORBIDDEN",
+        "Chỉ người báo được cấp quyền của gói mới được tạo hồ sơ.",
+      );
     const input = report.safeParse(req.body),
       key = z.uuid().safeParse(req.headers["idempotency-key"]);
     if (!input.success || !key.success)
@@ -368,11 +391,13 @@ export function g01Router({
       .digest("hex");
     const existing = (
       await pool.query<CaseRow>(
-        "SELECT * FROM cases WHERE reporter_id=$1 AND idempotency_key=$2",
-        [user.id, key.data],
+        "SELECT * FROM cases WHERE reporter_id=$1 AND idempotency_key=$2 AND pack_id=$3",
+        [user.id, key.data, packId],
       )
     ).rows[0];
     if (existing) {
+      if (!canReadCase(user, existing, []))
+        fail(404, "NOT_FOUND", "Hồ sơ không thuộc quyền hiện hành.");
       if (existing.request_hash !== hash)
         fail(
           409,
@@ -389,12 +414,13 @@ export function g01Router({
     let commandId: string | undefined;
     try {
       await client.query("BEGIN");
-      const active = await activePack(client);
+      const active = await activePack(client, packId);
       validatePayload(active.bundle.schema, data);
       await validateCatalog(client, data);
       const coordinator = (
         await client.query<{ subject_id: string }>(
-          "SELECT subject_id FROM memberships WHERE enabled AND 'coordinator'=ANY(roles) ORDER BY subject_id LIMIT 1",
+          "SELECT subject_id FROM memberships WHERE enabled AND $1=ANY(roles) ORDER BY subject_id LIMIT 1",
+          [packId === "g03" ? "safety_officer" : "coordinator"],
         )
       ).rows[0];
       if (!coordinator)
@@ -411,10 +437,12 @@ export function g01Router({
       if (!inserted) {
         const old = (
           await client.query<CaseRow>(
-            "SELECT * FROM cases WHERE reporter_id=$1 AND idempotency_key=$2",
-            [user.id, key.data],
+            "SELECT * FROM cases WHERE reporter_id=$1 AND idempotency_key=$2 AND pack_id=$3",
+            [user.id, key.data, packId],
           )
         ).rows[0]!;
+        if (!canReadCase(user, old, []))
+          fail(404, "NOT_FOUND", "Hồ sơ không thuộc quyền hiện hành.");
         if (old.request_hash !== hash)
           fail(
             409,
@@ -553,6 +581,12 @@ export function g01Router({
         };
       }
       if (input.action === "assign") {
+        if (packId === "g03" && input.teamId)
+          fail(
+            400,
+            "RESTRICTED_ASSIGNMENT",
+            "G03 chỉ giao người được ủy quyền ở bản này.",
+          );
         if (Boolean(input.technicianId) === Boolean(input.teamId))
           fail(
             400,
@@ -561,9 +595,17 @@ export function g01Router({
           );
         if (new Date(input.dueAt).getTime() <= Date.now())
           fail(400, "INVALID_DEADLINE", "Hạn hoàn thành phải ở tương lai.");
-        await requireRole(client, input.approverId, "approver");
+        await requireRole(
+          client,
+          input.approverId,
+          packId === "g03" ? "safety_officer" : "approver",
+        );
         if (input.technicianId) {
-          await requireRole(client, input.technicianId, "technician");
+          await requireRole(
+            client,
+            input.technicianId,
+            packId === "g03" ? "safety_officer" : "technician",
+          );
           if (input.approverId === input.technicianId)
             fail(400, "SELF_APPROVAL", "Người xử lý không được tự nghiệm thu.");
         }
@@ -585,6 +627,15 @@ export function g01Router({
         next.technician_id = input.technicianId || null;
         next.team_id = input.teamId || null;
         next.approver_id = input.approverId;
+        if (packId === "g03")
+          next.access_ids = [
+            ...new Set([
+              row.reporter_id,
+              row.coordinator_id,
+              input.technicianId!,
+              input.approverId,
+            ]),
+          ];
         next.due_at = new Date(input.dueAt).toISOString();
         variables = {
           technician: next.technician_id || "",
@@ -618,7 +669,11 @@ export function g01Router({
         if (input.action === "submit") {
           if (!row.approver_id)
             fail(409, "NO_APPROVER", "Chưa có người nghiệm thu.");
-          await requireRole(client, row.approver_id, "approver");
+          await requireRole(
+            client,
+            row.approver_id,
+            packId === "g03" ? "safety_officer" : "approver",
+          );
           const evidence = await requireCleanEvidence(client, row);
           details.evidence = evidence;
           next.status = "acceptance";

@@ -81,6 +81,26 @@ users.push(
     "environment_ingestor",
   ],
 );
+users.push(
+  [
+    "88888888-8888-4888-8888-888888888888",
+    "safety_reporter",
+    "Người báo an toàn",
+    "safety_reporter",
+  ],
+  [
+    "99999999-9999-4999-8999-999999999999",
+    "safety",
+    "Cán bộ an toàn",
+    "safety_officer",
+  ],
+  [
+    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "safety_reviewer",
+    "Nghiệm thu an toàn",
+    "safety_officer",
+  ],
+);
 const audience = {
   name: "schoolops-audience",
   protocol: "openid-connect",
@@ -101,7 +121,11 @@ const realm = {
   rememberMe: false,
   accessTokenLifespan: 300,
   bruteForceProtected: true,
-  roles: { realm: users.map(([, , , role]) => ({ name: role })) },
+  roles: {
+    realm: [...new Set(users.map(([, , , role]) => role))].map((name) => ({
+      name,
+    })),
+  },
   clients: [
     {
       clientId: "schoolops-web",
