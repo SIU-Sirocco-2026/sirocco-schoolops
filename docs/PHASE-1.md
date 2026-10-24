@@ -73,7 +73,9 @@ pnpm test:e2e
 
 `demo:verify` kiểm tra gateway, readiness, token sai, membership, tạo task thật, gửi lặp, nội dung khác cùng khóa, quyền, hoàn tất và khả năng đọc lại kết quả. Script dùng client `schoolops-smoke` chỉ phục vụ kiểm thử local bằng password grant; ứng dụng web luôn dùng authorization code + PKCE. Không mang client smoke này sang production.
 
-Playwright thử đăng nhập browser qua Keycloak bằng hai context, tạo task, hoàn tất, xem lại kết quả và kiểm tra viewport điện thoại. Báo cáo/ảnh ở `test-results/` và `playwright-report/`; các thư mục này được Git ignore.
+Playwright thử đăng nhập browser qua Keycloak bằng hai context, tạo task, hoàn tất, xem lại kết quả và kiểm tra viewport điện thoại. Các test bổ sung đăng nhập đủ năm vai trò demo và xác nhận đăng xuất kết thúc phiên Identity bằng cách yêu cầu nhập thông tin khi đăng nhập lại. Báo cáo/ảnh ở `test-results/` và `playwright-report/`; các thư mục này được Git ignore.
+
+Xem [ma trận nghiệm thu giai đoạn 1](verification/phase-1-acceptance.md) để đối chiếu từng yêu cầu với mã và kiểm thử tương ứng.
 
 Unit/API tests không dùng dịch vụ Docker; chúng kiểm tra token với khóa RSA tạm và hành vi API với dependency thay thế. Chúng không chứng minh engine/database thật đã chạy.
 

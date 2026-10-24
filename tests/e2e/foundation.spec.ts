@@ -23,6 +23,21 @@ async function login(page: Page, username: string) {
     page.getByRole("heading", { name: "Công việc của tôi", exact: true }),
   ).toBeVisible();
 }
+
+async function logout(page: Page) {
+  await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Đăng nhập vào SchoolOps/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Công việc của tôi", exact: true }),
+  ).toHaveCount(0);
+
+  // Check the Identity session too: clicking login after logout must ask for
+  // credentials instead of silently restoring the previous user through SSO.
+  await page.getByRole("button", { name: /Đăng nhập vào SchoolOps/ }).click();
+  await expect(page.getByLabel(/Username|Tên đăng nhập/)).toBeVisible();
+}
 test("browser → Identity → gateway → API → database → Flowable task → completion", async ({
   browser,
 }) => {
@@ -74,6 +89,34 @@ test("browser → Identity → gateway → API → database → Flowable task �
     path: "test-results/foundation-mobile.png",
     fullPage: true,
   });
+  await logout(reporterPage);
+  await logout(techPage);
   await technician.close();
   await reporter.close();
 });
+
+for (const account of [
+  { username: "coordinator", role: "Điều phối", canCreate: true },
+  { username: "approver", role: "Nghiệm thu", canCreate: false },
+  { username: "admin", role: "Quản trị kỹ thuật", canCreate: false },
+]) {
+  test(`seeded ${account.username} identity has the expected application permissions`, async ({
+    page,
+  }) => {
+    await login(page, account.username);
+    await expect(page.locator(".summary-role")).toContainText(account.role);
+    await expect(page.getByLabel("Nội dung nhiệm vụ")).toHaveCount(
+      account.canCreate ? 1 : 0,
+    );
+    await expect(
+      page.getByRole("button", { name: "Xác nhận hoàn tất", exact: true }),
+    ).toHaveCount(0);
+
+    if (!account.canCreate) {
+      await expect(
+        page.getByRole("heading", { name: "Chưa có nhiệm vụ" }),
+      ).toBeVisible();
+    }
+    await logout(page);
+  });
+}
