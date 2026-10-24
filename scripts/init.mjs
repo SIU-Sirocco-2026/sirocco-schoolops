@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -124,12 +124,18 @@ const realm = {
     realmRoles: [role],
   })),
 };
-await mkdir(resolve(root, "infra/generated"), { recursive: true });
+await mkdir(resolve(root, "infra/generated"), { recursive: true, mode: 0o700 });
 await writeFile(
   resolve(root, "infra/generated/realm.json"),
   JSON.stringify(realm, null, 2),
-  { mode: 0o600 },
+  { mode: 0o644 },
 );
+// The container has a different UID. Its read-only file mount must be readable;
+// the private parent directory prevents other host users traversing to the file.
+if (process.platform !== "win32") {
+  await chmod(resolve(root, "infra/generated"), 0o700);
+  await chmod(resolve(root, "infra/generated/realm.json"), 0o644);
+}
 console.log(
   "Đã tạo cấu hình local. Thông tin đăng nhập nằm trong .env (DEMO_PASSWORD).",
 );

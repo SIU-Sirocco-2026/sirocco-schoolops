@@ -27,7 +27,8 @@ export class Flowable {
     });
     if (!response.ok) throw new Error(`Workflow HTTP ${response.status}`);
     if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    const body = await response.text();
+    return (body ? JSON.parse(body) : undefined) as T;
   }
   async ready() {
     await this.request("management/engine");

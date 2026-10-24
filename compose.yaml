@@ -104,10 +104,12 @@ services:
       web: { condition: service_started }
     healthcheck:
       test:
-        [
-          CMD-SHELL,
-          "curl -fsS http://127.0.0.1:9080/api/health/ready >/dev/null",
-        ]
+        - CMD
+        - /usr/local/openresty/bin/resty
+        - -I
+        - /usr/local/apisix/deps/share/lua/5.1
+        - -e
+        - 'local http=require("resty.http").new(); local r,e=http:request_uri("http://127.0.0.1:9080/api/health/ready"); if not r or r.status ~= 200 then os.exit(1) end'
       interval: 10s
       timeout: 8s
       retries: 20
