@@ -28,13 +28,16 @@ pnpm demo:verify:phase3      # 17 nhóm nghiệm thu, gồm lỗi và crash th�
 pnpm test:e2e               # 6 browser tests, 4 vai trò G01 và 5 tài khoản nền tảng
 ```
 
-Các bộ kiểm tra được chạy trên stack Docker thật ở Windows/WSL2; CI chạy lại từ source trên Ubuntu. Trạng thái kết quả cuối cùng được ghi sau khi hoàn tất lượt nghiệm thu. Không dùng một unit test giả lập để thay cho bằng chứng kết nối/quét/file/workflow thật.
+**Kết quả local:** toàn bộ các lệnh trên đã đạt: 21 tests, 8 nhóm nền tảng, 9 nhóm G01, 17 nhóm giai đoạn 3 và 6 browser tests. Đã mở kiểm tra trực quan ảnh giao diện bằng chứng trên điện thoại. Kiểm tra bổ sung PNG/PDF thật đã upload → quét ClamAV → download đúng bytes; truy cập S3 ẩn danh bị 403.
+
+Các bộ kiểm tra được chạy trên stack Docker thật ở Windows/WSL2; CI chạy lại từ source trên Ubuntu. Trạng thái CI/review được đối chiếu tại SHA cuối cùng trong PR, không suy ra từ kết quả local. Không dùng một unit test giả lập để thay cho bằng chứng kết nối/quét/file/workflow thật.
 
 Các artifacts local được Git ignore:
 
 - `test-results/integration.json`: nền tảng và process ID.
 - `test-results/g01-integration.json`: hai luồng G01, case/process ID và kết quả.
 - `test-results/phase3-integration.json`: timestamp, case ID và kết quả từng nhóm; lưu ngay cả khi một nhóm thất bại.
+- `test-results/phase3-files.json`: kiểm tra bổ sung PNG/PDF và chặn truy cập S3 ẩn danh.
 - `test-results/browser/.last-run.json` và `playwright-report/`: kết quả browser.
 - `test-results/phase3-evidence-mobile.png`, `g01-mobile-*.png`, `g01-desktop-closed.png`: giao diện bằng chứng, xử lý và đóng hồ sơ.
 
