@@ -4,9 +4,9 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Nền tảng giai đoạn 1 đã chạy được trên local: web/API, PostgreSQL, Keycloak, APISIX và một nhiệm vụ Flowable. Đã kiểm chứng luồng tạo/hoàn tất qua hai tài khoản trên trình duyệt, quyền và gửi lặp. Xem [kết quả kiểm chứng](docs/verification/phase-1.md) và trạng thái CI của phiên bản cần dùng.
+Đã có nền tảng giai đoạn 1 và luồng nghiệp vụ G01 giai đoạn 2: báo sự cố → xác minh/trả bổ sung → giao người/tổ và hạn → nhận/xử lý → nghiệm thu/trả lại → đóng. Web/API chạy qua Keycloak, APISIX, PostgreSQL và Flowable thật. Xem [nghiệm thu giai đoạn 2](docs/verification/phase-2-acceptance.md) và trạng thái CI của phiên bản cần dùng.
 
-Xem [hướng dẫn giai đoạn 1](docs/PHASE-1.md) để cài đặt, thử luồng, hiểu kiến trúc và làm quen từng phần. Hợp đồng API ở [OpenAPI](docs/openapi.yaml).
+Xem [hướng dẫn demo và học giai đoạn 2](docs/PHASE-2.md), [nền tảng giai đoạn 1](docs/PHASE-1.md) và [OpenAPI](docs/openapi.yaml). Upload/quét bằng chứng và tự động đối soát lỗi thuộc giai đoạn 3; chưa coi G01 đã đủ các yêu cầu đó.
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -14,6 +14,8 @@ pnpm demo:init
 pnpm demo:up
 # Sau khi Docker/services đã sẵn sàng, mở http://localhost:8088
 pnpm demo:verify
+pnpm demo:verify:g01
+pnpm test:e2e
 ```
 
 ## Mục tiêu

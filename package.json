@@ -16,7 +16,9 @@
     "demo:up": "docker compose up -d --build --wait --wait-timeout 300",
     "demo:down": "docker compose down",
     "demo:logs": "docker compose logs --tail 100",
-    "demo:verify": "node scripts/verify.mjs"
+    "demo:verify": "node scripts/verify.mjs",
+    "demo:verify:g01": "node scripts/verify-g01.mjs",
+    "docker:repair": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/repair-docker-runtime.ps1"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

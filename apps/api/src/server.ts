@@ -15,15 +15,20 @@ const workflow = new Flowable(
   required("FLOWABLE_PASSWORD"),
 );
 let definition: string | undefined;
+let g01Definition: string | undefined;
 let initializing = false;
 async function initialize() {
-  if (initializing || definition) return;
+  if (initializing || (definition && g01Definition)) return;
   initializing = true;
   try {
     await migrate();
     await workflow.ready();
     definition = await workflow.deploy(required("BPMN_PATH"));
-    console.log("Database and foundation workflow ready.");
+    g01Definition = await workflow.deploy(
+      "/app/packs/g01/v1/workflow.bpmn20.xml",
+      "sirocco-g01-v1-0-0",
+    );
+    console.log("Database, foundation and G01 workflows ready.");
   } catch (error) {
     console.warn(
       "Waiting for core services:",
@@ -41,8 +46,9 @@ const app = createApp({
   key: remoteKey(required("OIDC_JWKS_URL")),
   technicianId,
   definitionId: () => definition,
+  g01DefinitionId: () => g01Definition,
   readiness: async () => {
-    if (!definition) throw new Error("Initializing");
+    if (!definition || !g01Definition) throw new Error("Initializing");
     await Promise.all([
       pool.query("SELECT 1"),
       workflow.ready(),

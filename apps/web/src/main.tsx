@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
 import "./style.css";
+import { G01 } from "./G01.js";
 
 type User = { id: string; username: string; name: string; roles: string[] };
 type Task = {
@@ -49,6 +50,7 @@ function date(value: string) {
 }
 
 function App() {
+  const [mode, setMode] = useState<"g01" | "foundation">("g01");
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
@@ -171,20 +173,28 @@ function App() {
         </div>
         <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
         <nav aria-label="Điều hướng">
-          <a className="nav-item active" href="#workspace">
+          <button
+            className={`nav-item ${mode === "g01" ? "active" : ""}`}
+            onClick={() => setMode("g01")}
+          >
+            Sự cố cơ sở vật chất
+          </button>
+          <button
+            className={`nav-item ${mode === "foundation" ? "active" : ""}`}
+            onClick={() => setMode("foundation")}
+          >
             <span className="nav-square" />
-            Công việc của tôi
+            Nhiệm vụ nền tảng
             <span className="count">
               {tasks.filter((t) => t.status !== "completed").length}
             </span>
-          </a>
+          </button>
         </nav>
         <div className="sidebar-note">
           <span className="small-dot" />
-          <strong>Nền tảng đang khởi tạo</strong>
+          <strong>Phối hợp xử lý sự cố</strong>
           <p>
-            Kiểm chứng đăng nhập, dữ liệu và quy trình trước khi mở rộng nghiệp
-            vụ.
+            Gửi báo hỏng, theo dõi người phụ trách và xem kết quả nghiệm thu.
           </p>
         </div>
         <div className="sidebar-footer">
@@ -202,11 +212,12 @@ function App() {
       <main id="workspace">
         <header className="topbar">
           <span>
-            SchoolOps <span className="slash">/</span> Công việc của tôi
+            SchoolOps <span className="slash">/</span>{" "}
+            {mode === "g01" ? "Sự cố cơ sở vật chất" : "Nhiệm vụ nền tảng"}
           </span>
           <span className="env-badge">
             <span className="small-dot" />
-            Bản tích hợp nền tảng
+            Môi trường demo
           </span>
         </header>
         <div className="page">
@@ -214,12 +225,16 @@ function App() {
             <div>
               <div className="eyebrow">VẬN HÀNH TRƯỜNG HỌC</div>
               <h1>
-                {user ? "Công việc của tôi" : "Một nơi để phối hợp xử lý."}
+                {user
+                  ? mode === "g01"
+                    ? "Sự cố cơ sở vật chất"
+                    : "Công việc của tôi"
+                  : "Một nơi để phối hợp xử lý."}
               </h1>
               <p className="intro">
                 {user
-                  ? "Theo dõi nhiệm vụ được giao và kết quả xử lý trên cùng một nền tảng."
-                  : "Đăng nhập để tiếp nhận, theo dõi và hoàn tất nhiệm vụ của bạn."}
+                  ? "Theo dõi hồ sơ và xử lý công việc theo vai trò của bạn."
+                  : "Đăng nhập để báo sự cố, phối hợp xử lý và nghiệm thu."}
               </p>
             </div>
             {user ? (
@@ -254,8 +269,8 @@ function App() {
                 <span className="eyebrow">BƯỚC ĐẦU TIÊN</span>
                 <h2>Bắt đầu từ công việc của bạn.</h2>
                 <p>
-                  Dùng tài khoản demo theo vai trò để thử luồng tạo và hoàn tất
-                  một nhiệm vụ.
+                  Dùng tài khoản demo theo vai trò để báo sự cố, giao việc, xử
+                  lý và nghiệm thu.
                 </p>
                 <button
                   className="button primary"
@@ -280,13 +295,15 @@ function App() {
                   <span>1</span>Đăng nhập theo vai trò
                 </div>
                 <div>
-                  <span>2</span>Tiếp nhận nhiệm vụ
+                  <span>2</span>Phối hợp xử lý
                 </div>
                 <div>
-                  <span>3</span>Xác nhận hoàn tất
+                  <span>3</span>Nghiệm thu kết quả
                 </div>
               </div>
             </section>
+          ) : mode === "g01" ? (
+            <G01 request={request} />
           ) : (
             <>
               <div className="summary">
@@ -478,7 +495,7 @@ function App() {
           )}
           <footer className="page-footer">
             <span>Sirocco Core + SchoolOps</span>
-            <span>Dữ liệu giả lập · Phạm vi kiểm chứng nền tảng</span>
+            <span>Dữ liệu giả lập · SchoolOps G01</span>
           </footer>
         </div>
       </main>

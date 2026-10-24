@@ -5,6 +5,8 @@ export type EngineTask = {
   assignee: string;
   processInstanceId: string;
   name: string;
+  taskDefinitionKey: string;
+  dueDate?: string;
 };
 export class Flowable {
   constructor(
@@ -33,10 +35,9 @@ export class Flowable {
   async ready() {
     await this.request("management/engine");
   }
-  async deploy(path: string) {
+  async deploy(path: string, name = "sirocco-foundation-v1-0-0") {
     // The deployed name is immutable in phase 1. Later revisions use a new package version.
     // Flowable derives the deployment name from the filename before its first dot.
-    const name = "sirocco-foundation-v1-0-0";
     const existing = await this.request<{ data: { id: string }[] }>(
       `repository/deployments?name=${name}`,
     );
@@ -65,12 +66,23 @@ export class Flowable {
     return id;
   }
   start(definitionId: string, runId: string, assignee: string) {
+    return this.startWithVariables(definitionId, runId, { assignee });
+  }
+  startWithVariables(
+    definitionId: string,
+    runId: string,
+    variables: Record<string, string | boolean>,
+  ) {
     return this.request<{ id: string }>("runtime/process-instances", {
       method: "POST",
       body: JSON.stringify({
         processDefinitionId: definitionId,
         businessKey: runId,
-        variables: [{ name: "assignee", value: assignee, type: "string" }],
+        variables: Object.entries(variables).map(([name, value]) => ({
+          name,
+          value,
+          type: typeof value,
+        })),
       }),
     });
   }
@@ -86,10 +98,23 @@ export class Flowable {
     );
     return result.data.some((item) => item.id === processId);
   }
-  complete(taskId: string) {
+  complete(taskId: string, variables: Record<string, string | boolean> = {}) {
     return this.request(`runtime/tasks/${encodeURIComponent(taskId)}`, {
       method: "POST",
-      body: JSON.stringify({ action: "complete" }),
+      body: JSON.stringify({
+        action: "complete",
+        variables: Object.entries(variables).map(([name, value]) => ({
+          name,
+          value,
+          type: typeof value,
+        })),
+      }),
+    });
+  }
+  claim(taskId: string, assignee: string) {
+    return this.request(`runtime/tasks/${encodeURIComponent(taskId)}`, {
+      method: "POST",
+      body: JSON.stringify({ action: "claim", assignee }),
     });
   }
 }

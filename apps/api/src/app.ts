@@ -11,6 +11,8 @@ import {
 } from "./auth.js";
 import type { JWTVerifyGetKey } from "jose";
 import type { Flowable } from "./workflow.js";
+import { HttpError } from "./errors.js";
+import { g01Router } from "./g01.js";
 
 type Options = {
   pool: pg.Pool;
@@ -20,6 +22,7 @@ type Options = {
   key: JWTVerifyGetKey;
   technicianId: string;
   definitionId: () => string | undefined;
+  g01DefinitionId?: () => string | undefined;
   readiness: () => Promise<unknown>;
 };
 type Run = {
@@ -39,19 +42,10 @@ const createInput = z
   .object({ title: z.string().trim().min(5).max(160) })
   .strict();
 const uuid = z.uuid();
-class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 export function createApp(options: Options) {
   const app = express();
   app.disable("x-powered-by");
-  app.use(express.json({ limit: "16kb" }));
+  app.use(express.json({ limit: "64kb" }));
   app.use((_req, res, next) => {
     res.set({
       "X-Content-Type-Options": "nosniff",
@@ -65,12 +59,10 @@ export function createApp(options: Options) {
       const services = await options.readiness();
       res.json({ status: "ready", services });
     } catch {
-      res
-        .status(503)
-        .json({
-          status: "starting",
-          message: "Một dịch vụ lõi chưa sẵn sàng.",
-        });
+      res.status(503).json({
+        status: "starting",
+        message: "Một dịch vụ lõi chưa sẵn sàng.",
+      });
     }
   });
   app.get("/api/config", (_req, res) =>
@@ -80,7 +72,7 @@ export function createApp(options: Options) {
         realm: "sirocco",
         clientId: "schoolops-web",
       },
-      phase: 1,
+      phase: 2,
     }),
   );
   app.use("/api", async (req, res, next) => {
@@ -124,6 +116,14 @@ export function createApp(options: Options) {
     next();
   });
   app.get("/api/me", (_req, res) => res.json({ user: res.locals.principal }));
+  app.use(
+    "/api/g01",
+    g01Router({
+      pool: options.pool,
+      workflow: options.workflow,
+      definitionId: options.g01DefinitionId || (() => undefined),
+    }),
+  );
   app.get("/api/foundation/tasks", async (_req, res) => {
     const user = res.locals.principal as Principal;
     const result = await options.pool.query<Run>(
@@ -240,13 +240,11 @@ export function createApp(options: Options) {
         "UPDATE foundation_runs SET status='needs_reconciliation' WHERE id=$1 RETURNING *",
         [id],
       );
-      res
-        .status(202)
-        .json({
-          item: view(result.rows[0]!),
-          message:
-            "Kết quả đồng bộ chưa chắc chắn; giữ nguyên hồ sơ để đối soát, không tạo lại workflow.",
-        });
+      res.status(202).json({
+        item: view(result.rows[0]!),
+        message:
+          "Kết quả đồng bộ chưa chắc chắn; giữ nguyên hồ sơ để đối soát, không tạo lại workflow.",
+      });
     }
   });
   app.post("/api/foundation/tasks/:id/complete", async (req, res) => {
@@ -317,32 +315,35 @@ export function createApp(options: Options) {
     next(new HttpError(404, "NOT_FOUND", "Đường dẫn không tồn tại.")),
   );
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (error?.type === "entity.too.large")
+      return void res.status(413).json({
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Nội dung vượt giới hạn 64 KB.",
+        },
+      });
     if (error instanceof HttpError)
       return void res
         .status(error.status)
         .json({ error: { code: error.code, message: error.message } });
     if (error instanceof SyntaxError && "body" in error)
-      return void res
-        .status(400)
-        .json({
-          error: {
-            code: "INVALID_JSON",
-            message: "Dữ liệu JSON không hợp lệ.",
-          },
-        });
+      return void res.status(400).json({
+        error: {
+          code: "INVALID_JSON",
+          message: "Dữ liệu JSON không hợp lệ.",
+        },
+      });
     console.error(
       "Request failed:",
       error instanceof Error ? error.message : "Unknown error",
     );
-    res
-      .status(503)
-      .json({
-        error: {
-          code: "SERVICE_UNAVAILABLE",
-          message:
-            "Dịch vụ tạm thời không sẵn sàng. Dữ liệu đã lưu được giữ lại; hãy kiểm tra lại trạng thái.",
-        },
-      });
+    res.status(503).json({
+      error: {
+        code: "SERVICE_UNAVAILABLE",
+        message:
+          "Dịch vụ tạm thời không sẵn sàng. Dữ liệu đã lưu được giữ lại; hãy kiểm tra lại trạng thái.",
+      },
+    });
   };
   app.use(errorHandler);
   return app;

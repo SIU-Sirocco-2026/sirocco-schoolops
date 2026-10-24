@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Sirocco Foundation API
-  version: 0.1.0
-  description: Local phase 1 proof. All non-public endpoints verify JWT and current database membership.
+  title: Sirocco SchoolOps API
+  version: 0.2.0
+  description: Foundation and G01. All non-public endpoints verify JWT and current database membership. Local demo only.
 servers:
   - url: http://localhost:8088
 security:
@@ -19,8 +19,7 @@ paths:
       responses:
         "200":
           {
-            description: Database,
-            Identity and deployed workflow are reachable,
+            description: "Database, Identity and deployed workflow are reachable",
           }
         "503": { description: Dependencies are starting or unavailable }
   /api/config:
@@ -39,8 +38,7 @@ paths:
       responses:
         "200":
           {
-            description: Tasks created by or assigned to current user,
-            most recent 100,
+            description: "Tasks created by or assigned to current user, most recent 100",
           }
         "401": { description: Missing or invalid access token }
         "403": { description: Membership missing or disabled }
@@ -96,7 +94,299 @@ paths:
           {
             description: Dependency unavailable or result uncertain; check status before retrying,
           }
+  /api/g01/catalog:
+    get:
+      responses:
+        "200":
+          {
+            description: "Rooms, room-bound assets, enabled staff by roles, eligible teams and pinned versions. No secrets.",
+          }
+        "401": { description: Missing or invalid token }
+        "403": { description: Disabled membership }
+  /api/g01/cases:
+    get:
+      description: Only cases involving the caller in their current role or an eligible unclaimed team task. Technical admin has no implicit access.
+      parameters:
+        - {
+            in: query,
+            name: status,
+            schema: { $ref: "#/components/schemas/CaseStatus" },
+          }
+        - {
+            in: query,
+            name: q,
+            schema: { type: string, maxLength: 160 },
+            description: Case-insensitive literal search in code/title/description,
+          }
+        - {
+            in: query,
+            name: mine,
+            schema: { type: boolean },
+            description: Only cases with an available action for this user,
+          }
+        - {
+            in: query,
+            name: page,
+            schema: { type: integer, minimum: 1, maximum: 100000, default: 1 },
+          }
+      responses:
+        "200":
+          description: Filtered page, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    {
+                      type: array,
+                      items: { $ref: "#/components/schemas/Case" },
+                    }
+                  total: { type: integer }
+                  page: { type: integer }
+                  pageSize: { type: integer, const: 25 }
+        "400": { description: Invalid filter or unexpected query parameter }
+        "401": { description: Missing or invalid token }
+        "403": { description: Disabled membership }
+    post:
+      description: Reporter creates a case and real verification task. Pins package/schema snapshot/workflow and exact definition ID. Replays return the same case; no automatic retry on an uncertain engine result.
+      parameters:
+        - {
+            in: header,
+            name: Idempotency-Key,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Report" }
+      responses:
+        "201": { $ref: "#/components/responses/CaseResult" }
+        "200": { $ref: "#/components/responses/CaseResult" }
+        "202":
+          {
+            description: Case preserved with syncStatus pending/needs_reconciliation. Do not create another process; automatic reconciliation is phase 3.,
+          }
+        "400":
+          {
+            description: "Invalid report, room/asset relationship or idempotency key",
+          }
+        "401": { description: Missing or invalid token }
+        "403": { description: Not reporter or membership disabled }
+        "409":
+          {
+            description: Same key with different content or no enabled coordinator,
+          }
+        "503": { description: Storage/engine not ready }
+  /api/g01/cases/{id}:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      responses:
+        "200":
+          description: Authorized detail and append-only chronological timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item: { $ref: "#/components/schemas/Case" }
+                  timeline:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        action: { type: string }
+                        actorId: { type: string, format: uuid }
+                        actorName: { type: string }
+                        createdAt: { type: string, format: date-time }
+                        fromStatus: { type: [string, "null"] }
+                        toStatus: { $ref: "#/components/schemas/CaseStatus" }
+                        revision: { type: integer }
+                        details:
+                          {
+                            type: object,
+                            description: "Original description, reason, assignment/deadline or work measures/result as appropriate",
+                          }
+        "400": { description: Invalid UUID }
+        "401": { description: Missing or invalid token }
+        "403": { description: Disabled membership }
+        "404": { description: Missing case or no case permission }
+  /api/g01/cases/{id}/actions:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    post:
+      description: Checks current role, case ownership/assignment/team, step, revision and actual engine task. Coordinator accepts/returns/assigns; reporter resubmits; technician receives/saves/submits; designated approver returns or approves and closes. Repairer cannot approve. Reasons required on both return branches. Save_work records text without completing the engine task. All objects reject extra fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [action, revision]
+                  properties:
+                    action: { enum: [accept, receive, approve] }
+                    revision: { $ref: "#/components/schemas/Revision" }
+                - type: object
+                  additionalProperties: false
+                  required: [action, revision, reason]
+                  properties:
+                    action: { enum: [return_info, return_work] }
+                    revision: { $ref: "#/components/schemas/Revision" }
+                    reason: { type: string, minLength: 5, maxLength: 2000 }
+                - type: object
+                  additionalProperties: false
+                  required: [action, revision, title, roomId, description]
+                  properties:
+                    action: { const: resubmit }
+                    revision: { $ref: "#/components/schemas/Revision" }
+                    title: { type: string, minLength: 5, maxLength: 160 }
+                    roomId: { type: string, minLength: 1, maxLength: 40 }
+                    assetId:
+                      { type: [string, "null"], minLength: 1, maxLength: 60 }
+                    description:
+                      { type: string, minLength: 10, maxLength: 4000 }
+                - type: object
+                  additionalProperties: false
+                  required: [action, revision, approverId, dueAt]
+                  description: Exactly one non-null technicianId or teamId. DueAt must be in the future; approver differs from repairer. Team must have an eligible technician other than approver.
+                  properties:
+                    action: { const: assign }
+                    revision: { $ref: "#/components/schemas/Revision" }
+                    technicianId: { type: [string, "null"], format: uuid }
+                    teamId: { type: [string, "null"], maxLength: 60 }
+                    approverId: { type: string, format: uuid }
+                    dueAt: { type: string, format: date-time }
+                - type: object
+                  additionalProperties: false
+                  required: [action, revision, measures, result]
+                  properties:
+                    action: { enum: [save_work, submit] }
+                    revision: { $ref: "#/components/schemas/Revision" }
+                    measures: { type: string, minLength: 5, maxLength: 4000 }
+                    result: { type: string, minLength: 5, maxLength: 4000 }
+      responses:
+        "200": { $ref: "#/components/responses/CaseResult" }
+        "202":
+          {
+            description: Engine outcome uncertain; case retained and actions blocked until reconciliation. No automatic phase 2 recovery.,
+          }
+        "400":
+          {
+            description: "Invalid input, missing reason/result, invalid assignee combination, past deadline or self-approval assignment",
+          }
+        "401": { description: Missing or invalid token }
+        "403":
+          {
+            description: "Wrong role/person/current step, self approval or disabled membership",
+          }
+        "404": { description: Case missing or outside caller permissions }
+        "409":
+          {
+            description: "Stale revision, unavailable assignee/team, or engine/task mapping conflict",
+          }
+        "413": { description: JSON payload exceeds 64 KB }
+        "503": { description: Dependency unavailable before command accepted }
 components:
+  responses:
+    CaseResult:
+      description: Persisted case with server-computed available actions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              item: { $ref: "#/components/schemas/Case" }
+  schemas:
+    Revision: { type: integer, minimum: 1 }
+    CaseStatus:
+      {
+        type: string,
+        enum:
+          [
+            verification,
+            supplement,
+            assignment,
+            assigned,
+            in_progress,
+            acceptance,
+            closed,
+          ],
+      }
+    Report:
+      type: object
+      additionalProperties: false
+      required: [title, roomId, description]
+      properties:
+        title: { type: string, minLength: 5, maxLength: 160 }
+        roomId: { type: string, minLength: 1, maxLength: 40 }
+        assetId: { type: [string, "null"], minLength: 1, maxLength: 60 }
+        description: { type: string, minLength: 10, maxLength: 4000 }
+    Case:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: G01-000001 }
+        title: { type: string }
+        roomId: { type: string }
+        assetId: { type: [string, "null"] }
+        description: { type: string }
+        reporterId: { type: string, format: uuid }
+        coordinatorId: { type: string, format: uuid }
+        technicianId: { type: [string, "null"], format: uuid }
+        teamId: { type: [string, "null"] }
+        approverId: { type: [string, "null"], format: uuid }
+        dueAt: { type: [string, "null"], format: date-time }
+        status: { $ref: "#/components/schemas/CaseStatus" }
+        syncStatus: { enum: [pending, ready, needs_reconciliation] }
+        revision: { $ref: "#/components/schemas/Revision" }
+        processId: { type: [string, "null"] }
+        definitionId: { type: string }
+        taskId: { type: [string, "null"] }
+        taskKey: { type: [string, "null"] }
+        packageVersion: { type: string }
+        schemaVersion: { type: string }
+        workflowVersion: { type: string }
+        measures: { type: [string, "null"] }
+        result: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        closedAt: { type: [string, "null"], format: date-time }
+        decisionBy: { type: [string, "null"], format: uuid }
+        actions:
+          {
+            type: array,
+            items:
+              {
+                enum:
+                  [
+                    accept,
+                    return_info,
+                    resubmit,
+                    assign,
+                    receive,
+                    save_work,
+                    submit,
+                    return_work,
+                    approve,
+                  ],
+              },
+          }
   securitySchemes:
     bearerAuth:
       type: http
