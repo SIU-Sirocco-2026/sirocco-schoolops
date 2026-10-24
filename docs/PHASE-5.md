@@ -57,7 +57,7 @@ Lineage episode giữ nguồn/trạm, các observation mở/duy trì/phục hồ
 
 `connectors/environment/replay.json` có expected results: 16 observation khác nhau, một lần duplicate trong fixture, một invalid, một late, một gap, hai mẫu bị cooldown và đúng hai episode. Script chọn điểm bắt đầu sau watermark hiện có để chạy nhiều lần mà không xóa lịch sử; trong mỗi run, replay lại nguyên event ID phải không sinh thêm observation/case/episode.
 
-`demo:verify:phase5` đối chiếu fixture, lineage/raw/normalized, quyền ingestion/cán bộ, file và báo cáo chung, thu hồi membership bằng token còn hạn, lỗi engine rồi tự phục hồi. Nó có thể dừng/khởi động engine và đổi quyền demo tạm thời trong finally; chỉ chạy trên stack demo riêng, tuần tự với bộ khác.
+`demo:verify:phase5` đối chiếu fixture, lineage/raw/normalized, quyền ingestion/cán bộ, file và báo cáo chung, thu hồi membership bằng token còn hạn, rule snapshot qua thay đổi active, lỗi engine rồi tự phục hồi. Nó có thể dừng/khởi động engine và đổi quyền demo tạm thời trong finally; chỉ chạy trên stack demo riêng, tuần tự với bộ khác.
 
 Unit kiểm tra chất lượng/normalize và bundle; browser mở lineage và hoàn tất hồ sơ bằng chứng sạch trên điện thoại. Kết quả trong `test-results/phase5-integration.json` và `phase5-lineage-mobile.png`; không lưu secret vào report. CI kiểm tra source sạch trên Linux. Mốc review/merge vẫn do đồng đội sau các giai đoạn, không tự ghi approval.
 

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { client, recorder, root, base } from "./test-client.mjs";
@@ -236,6 +237,96 @@ await check(
       (await c.ready(case1.id, "environment", "g02")).status,
       "closed",
     );
+  },
+);
+await check(
+  "an open episode keeps its rule snapshot across activation and the next episode uses the new rule",
+  async () => {
+    const files = await Promise.all(
+      [
+        "manifest.json",
+        "schema.json",
+        "workflow.bpmn20.xml",
+        "evidence-policy.json",
+        "seed.json",
+        "labels.json",
+      ].map((f) => readFile(`${root}/packs/g02/v1/${f}`, "utf8")),
+    );
+    const pack = {
+      manifest: JSON.parse(files[0]),
+      schema: JSON.parse(files[1]),
+      workflow: files[2],
+      evidence: JSON.parse(files[3]),
+      seed: JSON.parse(files[4]),
+      labels: JSON.parse(files[5]),
+    };
+    pack.manifest.version = "2.0.0";
+    pack.manifest.rule.version = "pm25-demo@2.0.0";
+    pack.manifest.rule.threshold = 80;
+    const start =
+      new Date(
+        (await c.call("environment", "/g02/sources")).items[0].watermark,
+      ).getTime() + 600000;
+    const post = (n, value) =>
+      c.call(
+        "sensor",
+        source,
+        {
+          eventId: `rule-${start}-${n}`,
+          stationId: "A101-PM25",
+          observedAt: new Date(start + n * 60000).toISOString(),
+          quantity: "pm25",
+          value,
+          unit: "ug/m3",
+          label: "replayed",
+        },
+        201,
+      );
+    try {
+      await post(0, 10);
+      await post(1, 45);
+      const opened = await post(2, 50);
+      await c.call("admin", "/packs/install", pack, 201);
+      await c.call("admin", "/packs/g02/2.0.0/activate", {});
+      await post(3, 50);
+      await post(4, 50);
+      const trace = await c.call(
+        "environment",
+        `/g02/episodes/${opened.episodeId}/lineage`,
+      );
+      assert.equal(trace.episode.rule.version, "pm25-demo@1.0.0");
+      assert.equal(trace.episode.conditionEndedAt, null);
+      await post(5, 10);
+      await post(6, 10);
+      await post(12, 50);
+      const noOpen = await post(13, 50);
+      assert.equal(noOpen.episodeId, null);
+      await post(14, 90);
+      const second = await post(15, 95);
+      assert.ok(second.episodeId);
+      const newer = await c.call(
+        "environment",
+        `/g02/episodes/${second.episodeId}/lineage`,
+      );
+      assert.equal(newer.episode.rule.version, "pm25-demo@2.0.0");
+      assert.equal(newer.episode.rule.threshold, 80);
+      const oldCase = await c.ready(opened.caseId, "environment", "g02"),
+        newCase = await c.ready(second.caseId, "environment", "g02");
+      assert.equal(oldCase.packageVersion, "g02@1.0.0");
+      assert.equal(newCase.packageVersion, "g02@2.0.0");
+      await post(16, 10);
+      await post(17, 10);
+      for (const row of [oldCase, newCase])
+        await c.act(
+          row,
+          "environment",
+          "dismiss",
+          { reason: "Đã kiểm chứng snapshot quy tắc theo phiên bản." },
+          "g02",
+        );
+    } finally {
+      await c.call("admin", "/packs/g02/1.0.0/activate", {});
+    }
   },
 );
 await check(

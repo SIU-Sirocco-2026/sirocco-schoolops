@@ -48,3 +48,5 @@ Nguồn kỹ thuật: [Ajv strict/2020-12](https://ajv.js.org/json-schema.html),
 - Integration `pnpm demo:verify:phase4`: quyền admin/CLI, lỗi không đổi active, immutable/idempotent install, pin v1/v2 qua restart, v1 văn bản/v2 ảnh và lỗi dịch vụ.
 - Browser `tests/e2e/packs.spec.ts`: admin đọc trạng thái và lỗi validator trên desktop/mobile; các test G01 hiện có tiếp tục chạy.
 - Báo cáo tại `test-results/phase4-integration.json`; ảnh `phase4-pack-admin-mobile.png`. CI chạy lại trên Linux tại đúng SHA PR. Không giả lập approval của đồng đội hoặc tự merge.
+
+Ma trận đối chiếu yêu cầu và bằng chứng: [nghiệm thu giai đoạn 4](verification/phase-4-acceptance.md).

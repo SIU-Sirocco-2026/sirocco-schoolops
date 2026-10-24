@@ -176,6 +176,46 @@ try {
       assert.ok(submit.details.evidence.some((e) => e.id === image.id));
     },
   );
+  await check(
+    "payload validation uses the active schema for new cases and the pinned schema when an old case resubmits",
+    async () => {
+      await activate("1.0.0");
+      let oldSchema = await c.create();
+      oldSchema = await c.act(oldSchema, "coordinator", "return_info", {
+        reason: "Cần bổ sung thông tin cho hồ sơ schema cũ.",
+      });
+      const strict = structuredClone(v2);
+      strict.manifest.version = "2.1.0";
+      strict.manifest.schema = "g01-case@2.1.0";
+      strict.schema.$id = strict.manifest.schema;
+      strict.schema.properties.description.minLength = 100;
+      strict.seed[0].description =
+        "Dữ liệu giả lập mô tả dài theo schema mới. ".repeat(5);
+      await c.call("admin", "/packs/install", strict, 201);
+      await activate("2.1.0");
+      const short = {
+        title: "Kiểm tra schema được pin",
+        roomId: "A101",
+        assetId: null,
+        description: "Mô tả đủ v1 nhưng chưa đủ một trăm ký tự của schema mới.",
+      };
+      const rejected = await c.call("reporter", "/g01/cases", short, 400, {
+        "Idempotency-Key": crypto.randomUUID(),
+      });
+      assert.equal(rejected.error.code, "SCHEMA_VALIDATION");
+      const valid = await c.call(
+        "reporter",
+        "/g01/cases",
+        { ...short, description: strict.seed[0].description },
+        [201, 202],
+        { "Idempotency-Key": crypto.randomUUID() },
+      );
+      assert.equal(valid.item.schemaVersion, "g01-case@2.1.0");
+      oldSchema = await c.act(oldSchema, "reporter", "resubmit", short);
+      assert.equal(oldSchema.status, "verification");
+      assert.equal(oldSchema.schemaVersion, "g01-case@1.0.0");
+    },
+  );
   await activate("1.0.0");
   await check(
     "deploy and activation failures preserve the active revision and leave no partially installed application revision",

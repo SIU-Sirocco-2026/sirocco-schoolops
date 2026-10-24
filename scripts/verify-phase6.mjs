@@ -79,6 +79,43 @@ await check(
   },
 );
 await check(
+  "idempotency is scoped by pack and cannot return a private G03 case through a G01 creation replay",
+  async () => {
+    try {
+      sql(
+        "UPDATE memberships SET roles=ARRAY['safety_reporter','reporter'] WHERE username='safety_reporter'",
+      );
+      const publicCase = await c.call(
+        "safety_reporter",
+        "/g01/cases",
+        {
+          title: "Kiểm tra scope idempotency giả lập",
+          roomId: "A101",
+          assetId: null,
+          description:
+            "Một hồ sơ G01 độc lập, không phải chuyển loại hồ sơ G03.",
+        },
+        [201, 202],
+        { "Idempotency-Key": key },
+      );
+      assert.notEqual(publicCase.item.id, row.id);
+      assert.equal(publicCase.item.packageVersion, "g01@1.0.0");
+      const replay = await c.call(
+        "safety_reporter",
+        "/g03/cases",
+        payload,
+        200,
+        { "Idempotency-Key": key },
+      );
+      assert.equal(replay.item.id, row.id);
+    } finally {
+      sql(
+        "UPDATE memberships SET roles=ARRAY['safety_reporter'] WHERE username='safety_reporter'",
+      );
+    }
+  },
+);
+await check(
   "G01 users and technical admin cannot discover restricted content or counts through list/search/report/notifications/detail/actions",
   async () => {
     for (const user of [
