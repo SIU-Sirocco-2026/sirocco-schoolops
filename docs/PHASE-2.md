@@ -1,5 +1,7 @@
 # Giai đoạn 2 — Luồng sự cố cơ sở vật chất G01
 
+> Tài liệu mô tả mốc giai đoạn 2. Nhánh hiện tại đã bổ sung giai đoạn 3; gửi nghiệm thu cần bằng chứng sạch của task hiện tại. Dùng [hướng dẫn giai đoạn 3](PHASE-3.md) khi chạy phiên bản mới.
+
 Giai đoạn này hoàn thành luồng nghiệp vụ cơ bản theo `ROADMAP-CHUC-NANG-SIROCCO-SCHOOLOPS.md`: báo sự cố, xác minh/trả bổ sung, giao người hoặc tổ và hạn xử lý, nhận việc, lưu biện pháp/kết quả, nghiệm thu/trả lại, đóng và xem lịch sử. Tệp bằng chứng, quét tệp, outbox/worker và đối soát tự động thuộc giai đoạn 3.
 
 ## Khởi động và thử ngay

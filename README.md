@@ -4,9 +4,9 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Đã có nền tảng giai đoạn 1 và luồng nghiệp vụ G01 giai đoạn 2: báo sự cố → xác minh/trả bổ sung → giao người/tổ và hạn → nhận/xử lý → nghiệm thu/trả lại → đóng. Web/API chạy qua Keycloak, APISIX, PostgreSQL và Flowable thật. Xem [nghiệm thu giai đoạn 2](docs/verification/phase-2-acceptance.md) và trạng thái CI của phiên bản cần dùng.
+Đã có nền tảng giai đoạn 1, luồng G01 giai đoạn 2 và các chức năng giai đoạn 3: upload/cách ly/quét bằng chứng bằng SeaweedFS + ClamAV, chặn gửi nghiệm thu khi thiếu bằng chứng sạch, outbox/worker tự phục hồi lỗi và báo cáo theo quyền. Web/API dùng Keycloak, APISIX, PostgreSQL và Flowable thật.
 
-Xem [hướng dẫn demo và học giai đoạn 2](docs/PHASE-2.md), [nền tảng giai đoạn 1](docs/PHASE-1.md) và [OpenAPI](docs/openapi.yaml). Upload/quét bằng chứng và tự động đối soát lỗi thuộc giai đoạn 3; chưa coi G01 đã đủ các yêu cầu đó.
+Xem [hướng dẫn giai đoạn 3](docs/PHASE-3.md), [ma trận nghiệm thu](docs/verification/phase-3-acceptance.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md) và [OpenAPI](docs/openapi.yaml). Validate/activate gói v1/v2, G02/G03 và backup/restore thuộc các giai đoạn tiếp theo. Mã đang trên nhánh phát triển; kiểm tra CI/review và thứ tự merge của PR trước khi dùng main.
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -15,6 +15,7 @@ pnpm demo:up
 # Sau khi Docker/services đã sẵn sàng, mở http://localhost:8088
 pnpm demo:verify
 pnpm demo:verify:g01
+pnpm demo:verify:phase3
 pnpm test:e2e
 ```
 
@@ -34,11 +35,13 @@ G01 là luồng triển khai đầu tiên. Tình huống xuyên suốt: giáo vi
 apps/
   web/       Giao diện SchoolOps
   api/       API hồ sơ, nhiệm vụ, bằng chứng và quyền
-  worker/    Tác vụ nền, quét tệp và xử lý dữ liệu
+  # Worker giai đoạn 3 hiện dùng apps/api/src/worker.ts và cùng Docker image API
 infra/       Cấu hình hạ tầng và môi trường chạy
 packs/       Gói nghiệp vụ G01/G02/G03
 docs/        Kiến trúc, API và hướng dẫn
 ```
+
+`demo:verify:phase3` chủ động dừng/khởi động engine/scanner/worker để thử lỗi: chỉ chạy trên stack demo riêng, tuần tự với các phép kiểm tra khác. Trên máy Windows MSIX này, dùng helper `C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1` trước khi làm việc với Docker; xem chi tiết trong hướng dẫn giai đoạn 3.
 
 ## Các mốc dự kiến
 
