@@ -12,4 +12,6 @@
 
 Các lệnh: `pnpm typecheck`, `pnpm test` (27 tests), `pnpm build`, `pnpm demo:verify:phase6` (8 nhóm), `pnpm test:e2e` (9 tests khi có cả G01/G02/gói/G03). Các bài G03 riêng đã chạy đạt local; lượt hồi quy toàn bộ và CI được đối chiếu tại commit cuối trước bàn giao. Kiểm tra bổ sung xác nhận cùng key ở G01/G03 không trả nhầm case riêng tư. Report local `phase6-integration.json`, ảnh `phase6-restricted-mobile.png`, browser report/CI là bằng chứng theo phiên bản; không giả approval hoặc tự merge.
 
+Gateway giữ giới hạn 300 yêu cầu/phút. Test client dùng chung chờ theo `X-RateLimit-Reset` rồi thử lại tối đa một lần khi APISIX trả 429 trước khi chuyển đến API, giữ nguyên body/idempotency key; không thử lại các lỗi nghiệp vụ, quyền hoặc lỗi 5xx. Đã tái hiện bằng cách dùng hết quota thật rồi chạy lại bộ G03; kiểm tra riêng xác nhận số lần thử bị chặn và body/key không đổi.
+
 Migration 8 giữ case G01/G02, thêm access_ids/access journal/notification, tách unique idempotency theo pack. Quyền database operator là ranh giới tin cậy; không tuyên bố đã có UI cấp/thu hồi ACL, group editor hoặc chống người có quyền trực tiếp database. Lệnh nhận hợp lệ trước thu hồi tiếp tục được xử lý. Giai đoạn 7 vẫn còn nghiệm thu phát hành, backup/restore, giấy phép và demo tổng thể.

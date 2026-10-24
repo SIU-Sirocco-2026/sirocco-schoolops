@@ -4,6 +4,25 @@ import { resolve } from "node:path";
 export const root = resolve(import.meta.dirname, "..");
 export const base = "http://localhost:8088/api";
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export async function gatewayFetch(url, options) {
+  const response = await fetch(url, options);
+  const reset = Number(response.headers.get("X-RateLimit-Reset"));
+  // APISIX rejects these requests before forwarding them to the API. Only
+  // replay this explicit rejection, preserving the body and idempotency key.
+  if (
+    response.status !== 429 ||
+    response.headers.get("X-Sirocco-Gateway") !== "APISIX" ||
+    !response.headers.has("X-RateLimit-Reset") ||
+    !Number.isFinite(reset) ||
+    reset < 0 ||
+    reset > 60
+  )
+    return response;
+  await response.arrayBuffer();
+  console.log(`Gateway quota reached; waiting ${reset}s before one retry.`);
+  await sleep(Math.ceil(reset * 1000) + 100);
+  return fetch(url, options);
+}
 export async function client() {
   const env = Object.fromEntries(
     (await readFile(resolve(root, ".env"), "utf8"))
@@ -31,7 +50,7 @@ export async function client() {
   }
   async function call(user, path, body, expected = 200, headers = {}) {
     if (!tokens[user]) await login(user);
-    const r = await fetch(base + path, {
+    const r = await gatewayFetch(base + path, {
       method: body === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Bearer ${tokens[user]}`,
@@ -40,7 +59,13 @@ export async function client() {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    const data = await r.json();
+    const text = await r.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`${user} ${path}: HTTP ${r.status}, expected JSON`);
+    }
     assert.ok(
       (Array.isArray(expected) ? expected : [expected]).includes(r.status),
       `${user} ${path}: ${r.status} ${JSON.stringify(data)}`,
@@ -90,7 +115,7 @@ export async function client() {
   }
   async function upload(row, user, data, filename, prefix = "g01") {
     if (!tokens[user]) await login(user);
-    const r = await fetch(`${base}/${prefix}/cases/${row.id}/evidence`, {
+    const r = await gatewayFetch(`${base}/${prefix}/cases/${row.id}/evidence`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${tokens[user]}`,

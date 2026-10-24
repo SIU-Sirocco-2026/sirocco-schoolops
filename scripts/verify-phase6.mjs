@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { client, recorder, root, base, sleep } from "./test-client.mjs";
+import {
+  client,
+  recorder,
+  root,
+  base,
+  sleep,
+  gatewayFetch,
+} from "./test-client.mjs";
 const c = await client(),
   { check } = await recorder("phase6-integration"),
   reporter = "88888888-8888-4888-8888-888888888888",
@@ -39,7 +46,7 @@ const payload = {
 const uri = () => `/g03/cases/${row.id}`;
 async function getFile(user, expected) {
   if (!c.tokens[user]) await c.login(user);
-  const r = await fetch(`${base}${uri()}/evidence/${file.id}/download`, {
+  const r = await gatewayFetch(`${base}${uri()}/evidence/${file.id}/download`, {
     headers: { Authorization: `Bearer ${c.tokens[user]}` },
   });
   assert.equal(r.status, expected);
@@ -227,7 +234,7 @@ await check(
       "environment",
     ]) {
       await getFile(user, 404);
-      const deniedUpload = await fetch(`${base}${uri()}/evidence`, {
+      const deniedUpload = await gatewayFetch(`${base}${uri()}/evidence`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${c.tokens[user]}`,

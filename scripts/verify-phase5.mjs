@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { client, recorder, root, base } from "./test-client.mjs";
+import { client, recorder, root, base, gatewayFetch } from "./test-client.mjs";
 import { replay } from "./replay-g02.mjs";
 const c = await client(),
   { check } = await recorder("phase5-integration");
@@ -161,13 +161,13 @@ await check(
           e.details.evidence.some((f) => f.id === evidence.id),
       ),
     );
-    const r = await fetch(
+    const r = await gatewayFetch(
       `${base}/g02/cases/${case1.id}/evidence/${evidence.id}/download`,
       { headers: { Authorization: `Bearer ${c.tokens.environment}` } },
     );
     assert.equal(r.status, 200);
     assert.match(await r.text(), /giả lập/);
-    const forbidden = await fetch(
+    const forbidden = await gatewayFetch(
       `${base}/g02/cases/${case1.id}/evidence/${evidence.id}/download`,
       { headers: { Authorization: `Bearer ${c.tokens.reporter}` } },
     );
