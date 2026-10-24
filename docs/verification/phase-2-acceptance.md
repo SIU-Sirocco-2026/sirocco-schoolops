@@ -48,6 +48,6 @@ Artifact sinh local (không commit để tránh gom dữ liệu thử và trace 
 - Chưa có CLI kích hoạt gói hoặc test v1/v2; giai đoạn 2 chỉ pin tham chiếu và definition cụ thể.
 - Chưa có báo cáo tổng hợp, G02/G03, backup/restore hoặc triển khai Internet/production.
 - Danh mục, tổ và quyền nhân sự dùng seed một trường; UI chưa quản trị các danh mục/nhân sự. Danh sách hiện phù hợp tập dữ liệu demo, chưa benchmark khối lượng lớn.
-- PR giai đoạn 1 còn mở. Nhánh giai đoạn 2 kế thừa đúng head giai đoạn 1 và PR đặt base `feat/phase-1-foundation`; review/merge lần lượt. Không tự merge vào main.
+- Lịch sử triển khai ban đầu ở PR #4/#5 được giữ để truy nguyên. Chuỗi thay thế dùng `feat/nen-tang-dang-nhap` → `feat/ho-so-su-co-g01` → `docs/quy-trinh-dong-gop`; review/merge lần lượt, không merge cả chuỗi cũ lẫn mới. Mã sản phẩm trước khi thêm tài liệu quy trình có tree giống hệt bản đã kiểm chứng; xem [đối chiếu lịch sử](../LICH-SU-TACH-COMMIT.md). Không tự merge vào main.
 
 Hướng dẫn demo và bài làm quen cho hai thành viên: [PHASE-2.md](../PHASE-2.md). Hợp đồng: [OpenAPI](../openapi.yaml). Tài liệu REST tham khảo: [Flowable REST API](https://www.flowable.com/open-source/docs/bpmn/ch14-REST); mapping đã được kiểm tra trên image Flowable 7.2.0 đang dùng thay vì chỉ dựa vào ví dụ tài liệu.
