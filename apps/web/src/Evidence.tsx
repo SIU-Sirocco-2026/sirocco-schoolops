@@ -27,11 +27,13 @@ export function Evidence({
   caseId,
   taskId,
   onReady,
+  policy,
 }: {
   request: Request;
   caseId: string;
   taskId: string | null;
   onReady: (ready: boolean) => void;
+  policy: { minClean: number; mimeTypes?: string[] };
 }) {
   const [files, setFiles] = useState<FileEvidence[]>([]),
     [canUpload, setCanUpload] = useState(false);
@@ -53,12 +55,13 @@ export function Evidence({
         setCanUpload(data.canUpload);
         setError("");
         onReady(
-          data.items.some(
+          data.items.filter(
             (f) =>
               f.taskId === taskId &&
               f.step === "repair" &&
-              f.scanStatus === "clean",
-          ),
+              f.scanStatus === "clean" &&
+              (!policy.mimeTypes || policy.mimeTypes.includes(f.mime)),
+          ).length >= policy.minClean,
         );
       } catch (e) {
         if (active) {
@@ -124,6 +127,9 @@ export function Evidence({
     <section className="evidence-section" aria-label="Bằng chứng hồ sơ">
       <h3>Bằng chứng</h3>
       <p>
+        {policy.mimeTypes?.every((m) => m.startsWith("image/"))
+          ? "Phiên bản gói này yêu cầu ảnh PNG/JPEG sạch. "
+          : ""}
         Chỉ tệp đã quét sạch được tải xuống. Mỗi lần gửi nghiệm thu cần bằng
         chứng sạch của lần xử lý đó.
       </p>

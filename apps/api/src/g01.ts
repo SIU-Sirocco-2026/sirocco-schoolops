@@ -1,8 +1,8 @@
 import { Router } from "express";
+import { activePack, validatePayload } from "./packs.js";
 import { enqueueCommand, executeCommand, recordCaseEvent } from "./outbox.js";
 import { evidenceRouter, requireCleanEvidence } from "./evidence.js";
 import type { EvidenceStore } from "./storage.js";
-import { readFileSync } from "node:fs";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
 import type pg from "pg";
@@ -18,23 +18,6 @@ import {
   caseScopeSql,
 } from "./g01-policy.js";
 
-const schemaSnapshot = JSON.parse(
-  readFileSync(
-    new URL("../../../packs/g01/v1/schema.json", import.meta.url),
-    "utf8",
-  ),
-);
-const evidencePolicy = JSON.parse(
-  readFileSync(
-    new URL("../../../packs/g01/v1/evidence-policy.json", import.meta.url),
-    "utf8",
-  ),
-);
-const refs = {
-  package: "g01@1.0.0",
-  schema: "g01-case@1.0.0",
-  workflow: "g01-facilities@1.0.0",
-};
 const report = z
   .object({
     title: z.string().trim().min(5).max(160),
@@ -94,6 +77,7 @@ type CaseRow = CaseAccess & {
   measures: string | null;
   result: string | null;
   request_hash: string;
+  pack_revision_id: string;
   evidence_policy_version: string;
   evidence_policy: {
     submit: { minClean: number; step: string; currentTask: boolean };
@@ -188,6 +172,7 @@ function view(row: CaseRow, user: Principal, teams: string[]) {
     decisionBy: row.decision_by,
     measures: row.measures,
     result: row.result,
+    packRevisionId: row.pack_revision_id,
     evidencePolicyVersion: row.evidence_policy_version,
     evidencePolicy: row.evidence_policy,
     actions: caseActions(user, row, teams),
@@ -263,7 +248,11 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       people: people.rows,
       teams: teams.rows,
       canCreate: user.roles.includes("reporter"),
-      versions: refs,
+      versions: await activePack(pool).then((r) => ({
+        package: `${r.pack_id}@${r.version}`,
+        schema: r.bundle.manifest.schema,
+        workflow: r.bundle.manifest.workflow,
+      })),
     });
   });
   router.use(evidenceRouter(pool, store));
@@ -376,13 +365,14 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
         .status(existing.sync_status === "ready" ? 200 : 202)
         .json({ item: view(existing, user, []) });
     }
-    const definition = definitionId();
-    if (!definition) fail(503, "ENGINE_NOT_READY", "Quy trình đang khởi động.");
+
     const client = await pool.connect();
     let row: CaseRow;
     let commandId: string | undefined;
     try {
       await client.query("BEGIN");
+      const active = await activePack(client);
+      validatePayload(active.bundle.schema, data);
       await validateCatalog(client, data);
       const coordinator = (
         await client.query<{ subject_id: string }>(
@@ -392,7 +382,7 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
       if (!coordinator)
         fail(409, "NO_COORDINATOR", "Chưa có điều phối được cấp quyền.");
       const inserted = await client.query<CaseRow>(
-        `INSERT INTO cases(id,title,room_id,asset_id,description,reporter_id,coordinator_id,status,sync_status,definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version) VALUES($1,$2,$3,$4,$5,$6,$7,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
+        `INSERT INTO cases(id,title,room_id,asset_id,description,reporter_id,coordinator_id,status,sync_status,definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version,pack_revision_id) VALUES($1,$2,$3,$4,$5,$6,$7,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
         [
           randomUUID(),
           data.title,
@@ -401,15 +391,16 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
           data.description,
           user.id,
           coordinator.subject_id,
-          definition,
-          refs.package,
-          refs.schema,
-          refs.workflow,
-          JSON.stringify(schemaSnapshot),
+          active.definition_id,
+          `${active.pack_id}@${active.version}`,
+          active.bundle.manifest.schema,
+          active.bundle.manifest.workflow,
+          JSON.stringify(active.bundle.schema),
           key.data,
           hash,
-          JSON.stringify(evidencePolicy),
-          evidencePolicy.version,
+          JSON.stringify(active.bundle.evidence),
+          active.bundle.evidence.version,
+          active.id,
         ],
       );
       if (!inserted.rowCount) {
@@ -528,6 +519,12 @@ export function g01Router({ pool, workflow, definitionId, store }: Options) {
         details = { reason: input.reason };
       }
       if (input.action === "resubmit") {
+        validatePayload((row as any).schema_snapshot, {
+          title: input.title,
+          roomId: input.roomId,
+          assetId: input.assetId || null,
+          description: input.description,
+        });
         await validateCatalog(client, input);
         next.status = "verification";
         next.title = input.title;

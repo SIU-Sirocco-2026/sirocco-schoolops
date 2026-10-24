@@ -3,6 +3,7 @@ import { remoteKey } from "./auth.js";
 import { migrate, pool, technicianId } from "./db.js";
 import { Flowable } from "./workflow.js";
 import { ObjectStore } from "./storage.js";
+import { bootstrapPacks } from "./packs.js";
 
 function required(name: string) {
   const value = process.env[name];
@@ -19,8 +20,9 @@ const workflow = new Flowable(
 let definition: string | undefined;
 let g01Definition: string | undefined;
 let initializing = false;
+let initialized = false;
 async function initialize() {
-  if (initializing || (definition && g01Definition)) return;
+  if (initializing || initialized) return;
   initializing = true;
   try {
     await migrate();
@@ -31,6 +33,8 @@ async function initialize() {
       "/app/packs/g01/v1/workflow.bpmn20.xml",
       "sirocco-g01-v1-0-0",
     );
+    await bootstrapPacks(pool, workflow, g01Definition);
+    initialized = true;
     console.log("Database, foundation and G01 workflows ready.");
   } catch (error) {
     console.warn(
@@ -52,7 +56,8 @@ const app = createApp({
   definitionId: () => definition,
   g01DefinitionId: () => g01Definition,
   readiness: async () => {
-    if (!definition || !g01Definition) throw new Error("Initializing");
+    if (!initialized || !definition || !g01Definition)
+      throw new Error("Initializing");
     await Promise.all([
       pool.query("SELECT 1"),
       workflow.ready(),

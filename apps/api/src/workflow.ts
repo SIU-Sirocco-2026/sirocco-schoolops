@@ -36,6 +36,9 @@ export class Flowable {
     await this.request("management/engine");
   }
   async deploy(path: string, name = "sirocco-foundation-v1-0-0") {
+    return this.deployXml(() => readFile(path, "utf8"), name);
+  }
+  async deployXml(xml: string | (() => Promise<string>), name: string) {
     // The deployed name is immutable in phase 1. Later revisions use a new package version.
     // Flowable derives the deployment name from the filename before its first dot.
     const existing = await this.request<{ data: { id: string }[] }>(
@@ -46,7 +49,9 @@ export class Flowable {
       const data = new FormData();
       data.append(
         name,
-        new Blob([await readFile(path, "utf8")], { type: "application/xml" }),
+        new Blob([typeof xml === "string" ? xml : await xml()], {
+          type: "application/xml",
+        }),
         `${name}.bpmn20.xml`,
       );
       const deployed = await this.request<{ id: string }>(

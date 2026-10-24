@@ -1,0 +1,10 @@
+{
+  "title": "Tiêu đề sự cố",
+  "description": "Mô tả",
+  "verify": "Xác minh",
+  "supplement": "Bổ sung",
+  "assign": "Giao việc",
+  "receive": "Nhận việc",
+  "repair": "Xử lý",
+  "approve": "Nghiệm thu"
+}

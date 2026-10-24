@@ -14,6 +14,7 @@ import type { Flowable } from "./workflow.js";
 import { HttpError } from "./errors.js";
 import { g01Router } from "./g01.js";
 import type { EvidenceStore } from "./storage.js";
+import { packsRouter } from "./packs.js";
 
 type Options = {
   pool: pg.Pool;
@@ -47,6 +48,7 @@ const uuid = z.uuid();
 export function createApp(options: Options) {
   const app = express();
   app.disable("x-powered-by");
+  app.use("/api/packs",express.json({limit:"256kb"}));
   app.use(express.json({ limit: "64kb" }));
   app.use((_req, res, next) => {
     res.set({
@@ -74,7 +76,7 @@ export function createApp(options: Options) {
         realm: "sirocco",
         clientId: "schoolops-web",
       },
-      phase: 3,
+      phase: 4,
     }),
   );
   app.use("/api", async (req, res, next) => {
@@ -118,6 +120,7 @@ export function createApp(options: Options) {
     next();
   });
   app.get("/api/me", (_req, res) => res.json({ user: res.locals.principal }));
+  app.use("/api/packs",packsRouter(options.pool,options.workflow));
   app.use(
     "/api/g01",
     g01Router({

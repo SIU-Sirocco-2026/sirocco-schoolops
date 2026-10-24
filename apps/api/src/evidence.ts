@@ -77,10 +77,16 @@ export async function requireCleanEvidence(
     );
   const clean = (
     await db.query(
-      `SELECT id,checksum,scan_version AS "scanVersion",policy_version AS "policyVersion"
+      `SELECT id,checksum,mime,scan_version AS "scanVersion",policy_version AS "policyVersion"
     FROM evidence WHERE case_id=$1 AND scan_status='clean' AND step_key=$2
-    AND ($3::boolean=false OR task_id=$4) ORDER BY created_at`,
-      [row.id, policy.step, policy.currentTask, row.task_id],
+    AND ($3::boolean=false OR task_id=$4) AND ($5::text[] IS NULL OR mime=ANY($5::text[])) ORDER BY created_at`,
+      [
+        row.id,
+        policy.step,
+        policy.currentTask,
+        row.task_id,
+        policy.mimeTypes || null,
+      ],
     )
   ).rows;
   if (clean.length < policy.minClean)

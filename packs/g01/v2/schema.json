@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "g01-case@2.0.0",
+  "title": "Báo sự cố cơ sở vật chất",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "roomId",
+    "description"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 160
+    },
+    "roomId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "assetId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 4000
+    }
+  }
+}

@@ -31,6 +31,7 @@ type Case = {
   measures: string | null;
   result: string | null;
   actions: string[];
+  evidencePolicy: { submit: { minClean: number; mimeTypes?: string[] } };
   packageVersion: string;
   schemaVersion: string;
   workflowVersion: string;
@@ -547,6 +548,7 @@ export function G01({ request }: { request: Request }) {
                 request={request}
                 caseId={detail.item.id}
                 taskId={detail.item.taskId}
+                policy={detail.item.evidencePolicy.submit}
                 onReady={setEvidenceReady}
               />
               {detail.item.syncStatus !== "ready" ? (

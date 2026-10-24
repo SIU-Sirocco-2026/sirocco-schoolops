@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
 import "./style.css";
+import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
 
 type User = { id: string; username: string; name: string; roles: string[] };
@@ -56,7 +57,7 @@ function date(value: string) {
 }
 
 function App() {
-  const [mode, setMode] = useState<"g01" | "foundation">("g01");
+  const [mode, setMode] = useState<"g01" | "foundation" | "packs">("g01");
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
@@ -195,6 +196,14 @@ function App() {
               {tasks.filter((t) => t.status !== "completed").length}
             </span>
           </button>
+          {user?.roles.includes("admin") && (
+            <button
+              className={`nav-item ${mode === "packs" ? "active" : ""}`}
+              onClick={() => setMode("packs")}
+            >
+              Gói nghiệp vụ
+            </button>
+          )}
         </nav>
         <div className="sidebar-note">
           <span className="small-dot" />
@@ -219,7 +228,11 @@ function App() {
         <header className="topbar">
           <span>
             SchoolOps <span className="slash">/</span>{" "}
-            {mode === "g01" ? "Sự cố cơ sở vật chất" : "Nhiệm vụ nền tảng"}
+            {mode === "g01"
+              ? "Sự cố cơ sở vật chất"
+              : mode === "packs"
+                ? "Gói nghiệp vụ"
+                : "Nhiệm vụ nền tảng"}
           </span>
           <span className="env-badge">
             <span className="small-dot" />
@@ -234,7 +247,9 @@ function App() {
                 {user
                   ? mode === "g01"
                     ? "Sự cố cơ sở vật chất"
-                    : "Công việc của tôi"
+                    : mode === "packs"
+                      ? "Gói nghiệp vụ"
+                      : "Công việc của tôi"
                   : "Một nơi để phối hợp xử lý."}
               </h1>
               <p className="intro">
@@ -308,6 +323,8 @@ function App() {
                 </div>
               </div>
             </section>
+          ) : mode === "packs" ? (
+            <Packs request={request} />
           ) : mode === "g01" ? (
             <G01 request={request} />
           ) : (
