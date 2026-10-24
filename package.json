@@ -1,0 +1,26 @@
+{
+  "name": "sirocco-schoolops",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @sirocco/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @sirocco/api test",
+    "test:e2e": "playwright test",
+    "demo:init": "node scripts/init.mjs",
+    "demo:up": "docker compose up -d --build --wait --wait-timeout 300",
+    "demo:down": "docker compose down",
+    "demo:logs": "docker compose logs --tail 100",
+    "demo:verify": "node scripts/verify.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "typescript": "5.9.3",
+    "prettier": "3.6.2"
+  }
+}

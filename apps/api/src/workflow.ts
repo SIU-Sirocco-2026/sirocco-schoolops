@@ -1,0 +1,89 @@
+import { readFile } from "node:fs/promises";
+
+export type EngineTask = {
+  id: string;
+  assignee: string;
+  processInstanceId: string;
+  name: string;
+};
+export class Flowable {
+  constructor(
+    private readonly base: string,
+    private readonly username: string,
+    private readonly password: string,
+  ) {}
+  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set(
+      "Authorization",
+      `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`,
+    );
+    if (init.body && !(init.body instanceof FormData))
+      headers.set("Content-Type", "application/json");
+    const response = await fetch(`${this.base}/${path}`, {
+      ...init,
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`Workflow HTTP ${response.status}`);
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  }
+  async ready() {
+    await this.request("management/engine");
+  }
+  async deploy(path: string) {
+    // The deployed name is immutable in phase 1. Later revisions use a new package version.
+    const name = "sirocco-foundation-1.0.0";
+    const existing = await this.request<{ data: { id: string }[] }>(
+      `repository/deployments?name=${name}`,
+    );
+    if (!existing.data.length) {
+      const data = new FormData();
+      data.append(
+        "file",
+        new Blob([await readFile(path, "utf8")], { type: "application/xml" }),
+        "task.bpmn20.xml",
+      );
+      await this.request("repository/deployments", {
+        method: "POST",
+        body: data,
+        headers: { "Deployment-Name": name },
+      });
+    }
+    const definitions = await this.request<{ data: { id: string }[] }>(
+      "repository/process-definitions?key=foundation-task&latest=true",
+    );
+    const id = definitions.data[0]?.id;
+    if (!id) throw new Error("Foundation workflow not deployed");
+    return id;
+  }
+  start(definitionId: string, runId: string, assignee: string) {
+    return this.request<{ id: string }>("runtime/process-instances", {
+      method: "POST",
+      body: JSON.stringify({
+        processDefinitionId: definitionId,
+        businessKey: runId,
+        variables: [{ name: "assignee", value: assignee, type: "string" }],
+      }),
+    });
+  }
+  async tasks(processId: string) {
+    const result = await this.request<{ data: EngineTask[] }>(
+      `runtime/tasks?processInstanceId=${encodeURIComponent(processId)}&size=10`,
+    );
+    return result.data;
+  }
+  async finished(processId: string) {
+    const result = await this.request<{ data: { id: string }[] }>(
+      `history/historic-process-instances?processInstanceId=${encodeURIComponent(processId)}&finished=true`,
+    );
+    return result.data.some((item) => item.id === processId);
+  }
+  complete(taskId: string) {
+    return this.request(`runtime/tasks/${encodeURIComponent(taskId)}`, {
+      method: "POST",
+      body: JSON.stringify({ action: "complete" }),
+    });
+  }
+}

@@ -1,0 +1,25 @@
+routes:
+  - id: api
+    uri: /api/*
+    plugins:
+      limit-count:
+        count: 300
+        time_window: 60
+        rejected_code: 429
+        key: remote_addr
+        policy: local
+      response-rewrite:
+        headers:
+          set:
+            X-Sirocco-Gateway: APISIX
+    upstream:
+      type: roundrobin
+      nodes:
+        "api:3000": 1
+  - id: web
+    uri: /*
+    upstream:
+      type: roundrobin
+      nodes:
+        "web:80": 1
+#END

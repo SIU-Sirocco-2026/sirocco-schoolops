@@ -1,0 +1,104 @@
+openapi: 3.1.0
+info:
+  title: Sirocco Foundation API
+  version: 0.1.0
+  description: Local phase 1 proof. All non-public endpoints verify JWT and current database membership.
+servers:
+  - url: http://localhost:8088
+security:
+  - bearerAuth: []
+paths:
+  /api/health/live:
+    get:
+      security: []
+      responses:
+        "200": { description: API process is running }
+  /api/health/ready:
+    get:
+      security: []
+      responses:
+        "200":
+          {
+            description: Database,
+            Identity and deployed workflow are reachable,
+          }
+        "503": { description: Dependencies are starting or unavailable }
+  /api/config:
+    get:
+      security: []
+      responses:
+        "200": { description: Public OIDC client configuration without secrets }
+  /api/me:
+    get:
+      responses:
+        "200": { description: Current identity and database roles }
+        "401": { description: Missing or invalid access token }
+        "403": { description: Membership missing or disabled }
+  /api/foundation/tasks:
+    get:
+      responses:
+        "200":
+          {
+            description: Tasks created by or assigned to current user,
+            most recent 100,
+          }
+        "401": { description: Missing or invalid access token }
+        "403": { description: Membership missing or disabled }
+    post:
+      description: Reporter/coordinator only. Assignee is the configured demo technician. No automatic retry on uncertain engine result.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title]
+              properties:
+                title: { type: string, minLength: 5, maxLength: 160 }
+      responses:
+        "201": { description: Persisted run linked to real engine process }
+        "200": { description: Existing result for identical idempotent request }
+        "202":
+          {
+            description: Starting or uncertain result preserved for reconciliation,
+          }
+        "400": { description: Invalid title or idempotency key }
+        "401": { description: Invalid authentication }
+        "403": { description: Wrong role or disabled membership }
+        "409":
+          {
+            description: Same key with different request or unavailable assignee,
+          }
+        "503": { description: Engine not ready or storage unavailable }
+  /api/foundation/tasks/{id}/complete:
+    post:
+      description: Only the currently authorized assigned technician may complete. Repeated completion returns the stored result.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          { description: Engine history confirms end and result is persisted }
+        "400": { description: Invalid ID }
+        "401": { description: Invalid authentication }
+        "403": { description: Wrong assignee or role }
+        "404": { description: Run missing or not visible to caller }
+        "409": { description: State or engine mapping conflict }
+        "503":
+          {
+            description: Dependency unavailable or result uncertain; check status before retrying,
+          }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
