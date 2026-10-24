@@ -30,10 +30,12 @@ jobs:
             sleep 5
           done
       - run: pnpm demo:up
+      - run: pnpm demo:users
       - run: pnpm demo:verify
       - run: pnpm demo:verify:g01
       - run: pnpm demo:verify:phase3
       - run: pnpm demo:verify:phase4
+      - run: pnpm demo:verify:phase5
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4

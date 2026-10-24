@@ -483,6 +483,209 @@ paths:
         "404": { description: PACK_NOT_FOUND }
         "409": { description: PACK_INTEGRITY }
         "503": { description: Dependencies unavailable; active unchanged }
+  /api/g02/sources/{id}/observations:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, enum: [demo-pm25] },
+        }
+    post:
+      description: environment_ingestor only. Stores raw/normalized/source/event/observed/received/quality/revision. Serializes by source. Valid samples evaluate versioned rule; invalid/late excluded. Same event/content replay returns existing; conflicting content cannot overwrite. Observation/episode/case/outbox commit atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                [eventId, stationId, observedAt, quantity, value, unit, label]
+              properties:
+                eventId: { type: string, minLength: 1, maxLength: 100 }
+                stationId: { const: A101-PM25 }
+                observedAt: { type: string, format: date-time }
+                quantity: { const: pm25 }
+                value: { type: number }
+                unit: { enum: [ug/m3, mg/m3] }
+                label: { const: replayed }
+      responses:
+        "201":
+          {
+            description: Valid observation,
+            optional episodeId/caseId; human workflow may still synchronize asynchronously,
+          }
+        "200": { description: duplicate=true; existing observation }
+        "202":
+          {
+            description: Invalid/late observation stored with qualityErrors; excluded from rule,
+          }
+        "403": { description: Missing ingestion role or disabled membership }
+        "404": { description: Source missing/disabled }
+        "409":
+          {
+            description: EVENT_ID_CONFLICT or assigned officer unavailable; transaction retained safely or rolled back for retry,
+          }
+    get:
+      description: Current assigned environment_officer only. Up to 200 recent observations with raw/normalized, units, timestamps, labels, quality/errors, gap and cooldown flags.
+      responses:
+        "200": { description: Observation items }
+        "403": { description: Missing officer role }
+        "404": { description: Source outside current scope }
+  /api/g02/sources:
+    get:
+      description: Assigned environment_officer sources and active illustrative rule. No sensor/admin implicit read.
+      responses:
+        "200": { description: Source items, rule and packRevisionId }
+        "403": { description: Missing officer role }
+  /api/g02/episodes:
+    get:
+      description: Assigned officer only. Episode state and shared case status are separate; environmental recovery never auto-closes a case.
+      responses:
+        "200":
+          {
+            description: Up to 100 visible episodes with case ID/code,
+            rule,
+            condition times and current case status,
+          }
+        "403": { description: Missing officer role }
+  /api/g02/episodes/{id}/lineage:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Assigned officer traces episode to exact rule snapshot, pack revision/checksum, case, valid measurement window and ingestion duplicate/conflict attempts. Invalid/late records remain in source quality history.
+      responses:
+        "200": { description: episode, observations and attempts }
+        "403": { description: Missing officer role }
+        "404": { description: Episode outside current case scope }
+  /api/g02/cases:
+    get:
+      description: Shared case list/query/pagination and bucket semantics, scoped to G02 and current assigned environment_officer.
+      responses:
+        "200": { description: items, total, page, pageSize }
+        "403": { description: Missing officer role }
+  /api/g02/cases/{id}:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared case projection, pinned versions, timeline and synchronization diagnostics; current G02 permission required.
+      responses:
+        "200": { description: item, timeline, synchronization }
+        "403": { description: Missing officer role }
+        "404": { description: Outside current case scope or wrong pack }
+  /api/g02/cases/{id}/actions:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    post:
+      description: Shared command executor. verify allows confirm or dismiss (reason); repair allows save_work or resolve (measures/result/reason plus clean evidence). Revision mandatory. Reasons >=5 chars; resolve never inferred from declining measurements.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [action, revision],
+                properties:
+                  {
+                    action: { enum: [confirm, dismiss, save_work, resolve] },
+                    revision: { type: integer, minimum: 1 },
+                    reason: { type: string, minLength: 5 },
+                    measures: { type: string, minLength: 5 },
+                    result: { type: string, minLength: 5 },
+                  },
+              }
+      responses:
+        "200": { description: Updated shared case }
+        "202": { description: Command queued for automatic recovery }
+        "400": { description: Invalid fields or missing reason }
+        "403": { description: Role/step/person forbidden }
+        "404": { description: Outside case scope }
+        "409":
+          { description: Stale revision, evidence required or engine mismatch }
+  /api/g02/reports:
+    get:
+      description: Shared open/overdue/completed totals and drill-down scope, filtered to G02 and current officer.
+      responses:
+        "200": { description: open, overdue, completed, total and generatedAt }
+        "403": { description: Missing officer role }
+  /api/g02/cases/{id}/evidence:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared evidence metadata for authorized G02 case.
+      responses:
+        "200": { description: items and canUpload }
+        "403": { description: Missing officer role }
+        "404": { description: Outside case scope }
+    post:
+      description: Same binary upload headers/limits/idempotency/quarantine/scan as G01. Only the assigned officer in repair can upload; current membership and case scope checked.
+      parameters:
+        - {
+            in: header,
+            name: Idempotency-Key,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            in: header,
+            name: X-File-Name,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: Quarantined evidence }
+        "200": { description: Idempotent replay }
+        "403": { description: Forbidden officer/step }
+        "404": { description: Outside scope }
+        "413": { description: File exceeds 10 MiB }
+  /api/g02/cases/{id}/evidence/{evidenceId}/download:
+    parameters:
+      - {
+          in: path,
+          name: id,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+      - {
+          in: path,
+          name: evidenceId,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    get:
+      description: Shared authenticated download with clean-status, checksum and current G02 case permission; no public object URL.
+      responses:
+        "200": { description: Original clean bytes with attachment headers }
+        "403": { description: Officer membership missing/revoked }
+        "404": { description: Outside scope }
+        "409": { description: File not clean or integrity failed }
 components:
   responses:
     CaseResult:
