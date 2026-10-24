@@ -48,11 +48,33 @@ async function call(role, path, body, expected = 200, extra = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json();
-  assert.equal(
-    response.status,
-    expected,
-    `${role} ${path}: ${JSON.stringify(data)}`,
-  );
+  const queued =
+    response.status === 202 &&
+    [200, 201].includes(expected) &&
+    body &&
+    (path === "/cases" || path.endsWith("/actions"));
+  if (!queued)
+    assert.equal(
+      response.status,
+      expected,
+      `${role} ${path}: ${JSON.stringify(data)}`,
+    );
+  if (queued) {
+    // The worker may acquire a committed command before the API's fast executor.
+    // Poll its projection; never resend a mutation just to get a synchronous reply.
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const current = await call(role, `/cases/${data.item.id}`);
+      if (current.item.syncStatus === "ready") {
+        data.item = current.item;
+        break;
+      }
+      if (attempt === 99)
+        throw new Error(
+          `Command did not reconcile: ${JSON.stringify(current.synchronization)}`,
+        );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
   return data;
 }
 async function check(name, fn) {
