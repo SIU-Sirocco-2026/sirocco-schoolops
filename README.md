@@ -4,7 +4,17 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Dự án đang khởi tạo. Các thành phần dưới đây là phạm vi dự kiến; chưa phải tính năng đã hoàn thành. Hướng dẫn cài đặt sẽ được bổ sung cùng bản tích hợp đầu tiên.
+Nền tảng giai đoạn 1 đã chạy được trên local: web/API, PostgreSQL, Keycloak, APISIX và một nhiệm vụ Flowable. Đã kiểm chứng luồng tạo/hoàn tất qua hai tài khoản trên trình duyệt, quyền và gửi lặp. Xem [kết quả kiểm chứng](docs/verification/phase-1.md) và trạng thái CI của phiên bản cần dùng.
+
+Xem [hướng dẫn giai đoạn 1](docs/PHASE-1.md) để cài đặt, thử luồng, hiểu kiến trúc và làm quen từng phần. Hợp đồng API ở [OpenAPI](docs/openapi.yaml).
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm demo:init
+pnpm demo:up
+# Sau khi Docker/services đã sẵn sàng, mở http://localhost:8088
+pnpm demo:verify
+```
 
 ## Mục tiêu
 
@@ -30,14 +40,14 @@ docs/        Kiến trúc, API và hướng dẫn
 
 ## Các mốc dự kiến
 
-| Mốc | Đầu ra |
-|---|---|
+| Mốc        | Đầu ra                                                              |
+| ---------- | ------------------------------------------------------------------- |
 | 29/10/2026 | Bản tích hợp lõi: đăng nhập → tạo hồ sơ → sinh và hoàn tất nhiệm vụ |
-| 08/11/2026 | G01 hoàn chỉnh và bản alpha |
-| 15/11/2026 | Kiểm chứng gói v1/v2 và luồng G02 |
-| 22/11/2026 | Demo ba gói SchoolOps |
-| 29/11/2026 | Kiểm thử cài từ source, backup/restore và lỗi tích hợp |
-| 03/12/2026 | Bản phát hành dự thi và tài liệu demo |
+| 08/11/2026 | G01 hoàn chỉnh và bản alpha                                         |
+| 15/11/2026 | Kiểm chứng gói v1/v2 và luồng G02                                   |
+| 22/11/2026 | Demo ba gói SchoolOps                                               |
+| 29/11/2026 | Kiểm thử cài từ source, backup/restore và lỗi tích hợp              |
+| 03/12/2026 | Bản phát hành dự thi và tài liệu demo                               |
 
 ## Cộng tác
 
