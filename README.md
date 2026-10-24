@@ -4,6 +4,8 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
+Giai đoạn 4 bổ sung registry/CLI gói có phiên bản và G01 v1/v2. Xem [hướng dẫn gói](docs/PHASE-4.md); quy trình review/merge vẫn qua các PR phụ thuộc.
+
 Đã có nền tảng giai đoạn 1, luồng G01 giai đoạn 2 và các chức năng giai đoạn 3: upload/cách ly/quét bằng chứng bằng SeaweedFS + ClamAV, chặn gửi nghiệm thu khi thiếu bằng chứng sạch, outbox/worker tự phục hồi lỗi và báo cáo theo quyền. Web/API dùng Keycloak, APISIX, PostgreSQL và Flowable thật.
 
 Xem [hướng dẫn giai đoạn 3](docs/PHASE-3.md), [ma trận nghiệm thu](docs/verification/phase-3-acceptance.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md) và [OpenAPI](docs/openapi.yaml). Validate/activate gói v1/v2, G02/G03 và backup/restore thuộc các giai đoạn tiếp theo. Mã đang trên nhánh phát triển; kiểm tra CI/review và thứ tự merge của PR trước khi dùng main.

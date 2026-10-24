@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Thêm registry gói bất biến, validator schema/seed/role/action/BPMN trong tập hỗ trợ, CLI validate/install/activate và UI trạng thái/lỗi; case pin revision, v1 giữ chính sách cũ còn v2 yêu cầu ảnh sạch.
+
 - Thêm upload/cách ly bằng chứng vào SeaweedFS, kiểm tra định dạng/kích thước/checksum, quét ClamAV thật và tải tệp theo quyền; nghiệm thu yêu cầu bằng chứng sạch gắn với lần xử lý hiện tại.
 - Thêm outbox/worker/retry/đối soát theo business key và task history; guard duy nhất tại engine chặn trùng workflow sau mất phản hồi; audit ghi policy/phiên bản/bằng chứng và phân biệt hệ thống quét với người tải.
 - Thêm báo cáo đang mở/quá hạn/hoàn thành và danh sách nguồn dùng cùng quyền; kiểm chứng thu hồi membership/role/tổ bằng token còn hạn.

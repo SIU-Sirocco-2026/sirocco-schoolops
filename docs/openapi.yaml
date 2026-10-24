@@ -433,6 +433,56 @@ paths:
         "409":
           { description: FILE_NOT_CLEAN or FILE_INTEGRITY; download blocked }
         "503": { description: Object store unavailable }
+  /api/packs:
+    get:
+      description: Technical admin only. Installed immutable revisions, active status, checksum, definition ID and latest validation/activation errors.
+      responses:
+        "200": { description: Revision items and audit events }
+        "403": { description: PACK_ADMIN_REQUIRED or membership disabled }
+  /api/packs/validate:
+    post:
+      description: Admin validates a complete bundle (manifest, schema, workflow XML, evidence, seed, labels). Strict supported adapter/BPMN subset; errors are recorded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: valid=true and canonical SHA-256 checksum }
+        "400": { description: valid=false and structured error strings }
+        "403": { description: PACK_ADMIN_REQUIRED }
+  /api/packs/install:
+    post:
+      description: Admin validates and deploys a version without activating it. Same version/checksum is idempotent; changed bytes under an installed version are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "201":
+          {
+            description: Revision ID,
+            pack ID,
+            version,
+            checksum and exact definition ID,
+          }
+        "400": { description: Invalid bundle }
+        "403": { description: PACK_ADMIN_REQUIRED }
+        "409": { description: IMMUTABLE_VERSION }
+        "503": { description: Deploy/storage unavailable; active unchanged }
+  /api/packs/{id}/{version}/activate:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string } }
+      - { in: path, name: version, required: true, schema: { type: string } }
+    post:
+      description: Admin revalidates installed bundle/checksum and definition; atomically switches active revision. Existing cases retain pinned revision/schema/policy/definition.
+      responses:
+        "200": { description: Activated revision }
+        "403": { description: PACK_ADMIN_REQUIRED }
+        "404": { description: PACK_NOT_FOUND }
+        "409": { description: PACK_INTEGRITY }
+        "503": { description: Dependencies unavailable; active unchanged }
 components:
   responses:
     CaseResult:
@@ -481,6 +531,7 @@ components:
         step: { type: string }
         taskId: { type: [string, "null"] }
         policyVersion: { type: string }
+        packRevisionId: { type: [string, "null"], format: uuid }
         packageVersion: { type: string }
         scanStatus: { enum: [pending, clean, rejected, error] }
         scanVersion: { type: [string, "null"] }
@@ -511,6 +562,7 @@ components:
         definitionId: { type: string }
         taskId: { type: [string, "null"] }
         taskKey: { type: [string, "null"] }
+        packRevisionId: { type: [string, "null"], format: uuid }
         packageVersion: { type: string }
         schemaVersion: { type: string }
         workflowVersion: { type: string }
