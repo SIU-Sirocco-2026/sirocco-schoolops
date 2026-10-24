@@ -1,0 +1,120 @@
+name: sirocco-schoolops
+services:
+  postgres:
+    image: postgres:17.11-alpine3.23
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Run pnpm demo:init first}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Run pnpm demo:init first}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Run pnpm demo:init first}
+      FLOWABLE_DB_PASSWORD: ${FLOWABLE_DB_PASSWORD:?Run pnpm demo:init first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [core]
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: [start-dev, --import-realm]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8180
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_KC_HEAP: -Xms128m -Xmx512m
+    ports: ["127.0.0.1:8180:8080"]
+    volumes:
+      ["./infra/generated/realm.json:/opt/keycloak/data/import/realm.json:ro"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" >&3; grep -q UP <&3'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+    networks: [core]
+  flowable:
+    image: flowable/flowable-rest:7.2.0
+    environment:
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowable
+      SPRING_DATASOURCE_USERNAME: flowable
+      SPRING_DATASOURCE_PASSWORD: ${FLOWABLE_DB_PASSWORD}
+      FLOWABLE_REST_APP_ADMIN_USERID: rest-admin
+      FLOWABLE_REST_APP_ADMIN_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD}
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [core]
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgresql://schoolops:${APP_DB_PASSWORD}@postgres:5432/schoolops
+      OIDC_ISSUER: http://localhost:8180/realms/sirocco
+      OIDC_JWKS_URL: http://keycloak:8080/realms/sirocco/protocol/openid-connect/certs
+      OIDC_AUDIENCE: schoolops-api
+      FLOWABLE_URL: http://flowable:8080/flowable-rest/service
+      FLOWABLE_USER: rest-admin
+      FLOWABLE_PASSWORD: ${FLOWABLE_ADMIN_PASSWORD}
+      BPMN_PATH: /app/packs/foundation/task.bpmn20.xml
+    volumes: ["./packs:/app/packs:ro"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      flowable: { condition: service_started }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://localhost:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 8s
+      retries: 40
+      start_period: 30s
+    networks: [core]
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    networks: [core]
+  gateway:
+    image: apache/apisix:3.19.0-ubuntu
+    volumes:
+      - ./infra/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./infra/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    ports: ["127.0.0.1:8088:9080"]
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_started }
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/openresty/bin/resty
+        - -I
+        - /usr/local/apisix/deps/share/lua/5.1
+        - -e
+        - 'local http=require("resty.http").new(); local r,e=http:request_uri("http://127.0.0.1:9080/api/health/ready"); if not r or r.status ~= 200 then os.exit(1) end'
+      interval: 10s
+      timeout: 8s
+      retries: 20
+    networks: [core]
+networks:
+  core:
+volumes:
+  postgres-data:
