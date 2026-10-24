@@ -1,0 +1,47 @@
+name: Foundation checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck && pnpm test && pnpm build
+      - run: pnpm demo:init
+      - name: Pull service images with bounded retry
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose pull --ignore-buildable --quiet; then
+              break
+            fi
+            if [ "$attempt" = "3" ]; then exit 1; fi
+            sleep 5
+          done
+      - run: pnpm demo:up
+      - run: pnpm demo:verify
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: foundation-test-results
+          path: |
+            test-results/
+            playwright-report/
+      - name: Service diagnostics on failure
+        if: failure()
+        run: docker compose ps && docker compose logs --tail 80 api gateway flowable keycloak
+      - if: always()
+        run: docker compose down
