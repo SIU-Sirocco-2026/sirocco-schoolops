@@ -1,4 +1,5 @@
 import pg from "pg";
+import { phase3Migration } from "./phase3-db.js";
 
 export const demoUsers = [
   {
@@ -124,6 +125,7 @@ export async function migrate() {
         INSERT INTO schema_migrations(version) VALUES (2);
       `);
     }
+    await phase3Migration(client);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

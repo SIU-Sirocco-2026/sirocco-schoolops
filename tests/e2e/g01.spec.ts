@@ -50,6 +50,41 @@ async function noOverflow(page: Page) {
   ).toBe(true);
 }
 
+async function cleanEvidence(page: Page, filename: string) {
+  const data = Buffer.from(
+    "Biên bản sửa chữa giả lập, kiểm chứng tải bằng chứng trên web.",
+  );
+  await expect(
+    page.getByRole("button", { name: "Gửi nghiệm thu", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Ảnh hoặc tài liệu bằng chứng (tối đa 10 MB)", { exact: true })
+    .setInputFiles({ name: filename, mimeType: "text/plain", buffer: data });
+  await page
+    .getByRole("button", { name: "Tải bằng chứng", exact: true })
+    .click();
+  const entry = page
+    .locator(".evidence-list li")
+    .filter({ has: page.getByText(filename, { exact: true }) });
+  await expect(entry.locator(".scan-state")).toHaveText("Đã quét sạch", {
+    timeout: 90000,
+  });
+  await expect(
+    page.getByRole("button", { name: "Gửi nghiệm thu", exact: true }),
+  ).toBeEnabled();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page
+      .getByRole("button", { name: `Tải xuống ${filename}`, exact: true })
+      .click(),
+  ]);
+  expect(readFileSync((await download.path())!)).toEqual(data);
+  await page.screenshot({
+    path: "test-results/phase3-evidence-mobile.png",
+    fullPage: true,
+  });
+}
+
 test("G01 four browser roles complete both return loops with timeline, deadline and immutable refs", async ({
   browser,
 }) => {
@@ -134,6 +169,7 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
     path: "test-results/g01-mobile-work.png",
     fullPage: true,
   });
+  await cleanEvidence(t, `ket-qua-${Date.now()}.txt`);
   await t.getByRole("button", { name: "Gửi nghiệm thu", exact: true }).click();
   await state(t, "Chờ nghiệm thu");
   await expect(
@@ -153,6 +189,7 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   await t
     .getByLabel("Kết quả xử lý", { exact: true })
     .fill("Đã thử liên tục 30 phút, hình ảnh ổn định.");
+  await cleanEvidence(t, `ket-qua-${Date.now()}.txt`);
   await t.getByRole("button", { name: "Gửi nghiệm thu", exact: true }).click();
   await state(t, "Chờ nghiệm thu");
   await refresh(a, "Chờ nghiệm thu");
@@ -183,6 +220,13 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
     path: "test-results/g01-desktop-closed.png",
     fullPage: true,
   });
+  await r.getByRole("button", { name: /^Hoàn thành/ }).click();
+  await expect(r.getByRole("button", { name: /^Hoàn thành/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await r.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
+  await r.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await r.getByLabel("Trạng thái", { exact: true }).selectOption("closed");
   await expect(r.getByRole("button").filter({ hasText: title })).toBeVisible();
   for (const ctx of contexts) await ctx.close();
@@ -196,6 +240,10 @@ test("technical admin cannot see G01 content or create cases through the UI", as
     page.getByRole("button", { name: "Báo sự cố mới", exact: true }),
   ).toHaveCount(0);
   await expect(page.locator(".task-list li")).toHaveCount(0);
+  for (const label of ["Tất cả", "Đang mở", "Quá hạn", "Hoàn thành"])
+    await expect(
+      page.getByRole("button", { name: `${label} 0`, exact: true }),
+    ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true }),
   ).toBeVisible();

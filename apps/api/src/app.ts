@@ -13,6 +13,7 @@ import type { JWTVerifyGetKey } from "jose";
 import type { Flowable } from "./workflow.js";
 import { HttpError } from "./errors.js";
 import { g01Router } from "./g01.js";
+import type { EvidenceStore } from "./storage.js";
 
 type Options = {
   pool: pg.Pool;
@@ -23,6 +24,7 @@ type Options = {
   technicianId: string;
   definitionId: () => string | undefined;
   g01DefinitionId?: () => string | undefined;
+  store?: EvidenceStore;
   readiness: () => Promise<unknown>;
 };
 type Run = {
@@ -72,7 +74,7 @@ export function createApp(options: Options) {
         realm: "sirocco",
         clientId: "schoolops-web",
       },
-      phase: 2,
+      phase: 3,
     }),
   );
   app.use("/api", async (req, res, next) => {
@@ -122,6 +124,7 @@ export function createApp(options: Options) {
       pool: options.pool,
       workflow: options.workflow,
       definitionId: options.g01DefinitionId || (() => undefined),
+      store: options.store,
     }),
   );
   app.get("/api/foundation/tasks", async (_req, res) => {
@@ -319,7 +322,7 @@ export function createApp(options: Options) {
       return void res.status(413).json({
         error: {
           code: "PAYLOAD_TOO_LARGE",
-          message: "Nội dung vượt giới hạn 64 KB.",
+          message: "Nội dung vượt giới hạn (JSON 64 KB, tệp 10 MB).",
         },
       });
     if (error instanceof HttpError)

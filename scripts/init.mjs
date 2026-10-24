@@ -26,6 +26,8 @@ for (const key of [
   "KEYCLOAK_ADMIN_PASSWORD",
   "FLOWABLE_ADMIN_PASSWORD",
   "DEMO_PASSWORD",
+  "S3_ACCESS_KEY",
+  "S3_SECRET_KEY",
 ])
   env[key] ||= randomBytes(24).toString("hex");
 await writeFile(
@@ -142,4 +144,24 @@ console.log(
 console.log("Tài khoản: reporter, coordinator, technician, approver, admin.");
 console.log(
   "Chạy pnpm demo:up; mở http://localhost:8088 khi dịch vụ sẵn sàng.",
+);
+
+await writeFile(
+  resolve(root, "infra/generated/s3.json"),
+  JSON.stringify(
+    {
+      identities: [
+        {
+          name: "schoolops",
+          credentials: [
+            { accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY },
+          ],
+          actions: ["Admin", "Read", "Write", "List", "Tagging"],
+        },
+      ],
+    },
+    null,
+    2,
+  ),
+  { mode: 0o644 },
 );

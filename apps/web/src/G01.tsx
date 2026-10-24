@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Evidence } from "./Evidence.js";
 
 type Person = { id: string; name: string; roles: string[] };
 type Catalog = {
@@ -72,6 +73,9 @@ const actionNames: Record<string, string> = {
   return_work: "Trả lại xử lý",
   approve: "Phê duyệt và đóng",
   action_requested: "Đã gửi yêu cầu chuyển bước",
+  workflow_started: "Đã khởi tạo quy trình",
+  evidence_uploaded: "Đã tải bằng chứng",
+  evidence_scanned: "Đã kiểm tra bằng chứng",
 };
 const date = (v: string) =>
   new Intl.DateTimeFormat("vi-VN", {
@@ -87,6 +91,14 @@ const initial = {
 };
 
 export function G01({ request }: { request: Request }) {
+  const [bucket, setBucket] = useState("all"),
+    [evidenceReady, setEvidenceReady] = useState(false);
+  const [summary, setSummary] = useState<{
+    open: number;
+    overdue: number;
+    completed: number;
+    total: number;
+  } | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null),
     [items, setItems] = useState<Case[]>([]),
     [total, setTotal] = useState(0);
@@ -111,13 +123,21 @@ export function G01({ request }: { request: Request }) {
     const params = new URLSearchParams({
       page: String(page),
       mine: String(mine),
+      bucket,
     });
     if (status) params.set("status", status);
     if (search) params.set("q", search);
-    const list = await request<{ items: Case[]; total: number }>(
-      `/api/g01/cases?${params}`,
-    );
+    const [list, report] = await Promise.all([
+      request<{ items: Case[]; total: number }>(`/api/g01/cases?${params}`),
+      request<{
+        open: number;
+        overdue: number;
+        completed: number;
+        total: number;
+      }>("/api/g01/reports"),
+    ]);
     if (n === generation.current) {
+      setSummary(report);
       setItems(list.items);
       setTotal(list.total);
     }
@@ -137,14 +157,27 @@ export function G01({ request }: { request: Request }) {
     void loadList()
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [status, search, mine, page]);
+  }, [status, search, mine, page, bucket]);
   useEffect(() => {
     setDetail(null);
+    setEvidenceReady(false);
     if (selected) void loadDetail(selected).catch((e) => setError(e.message));
     return () => {
       detailGeneration.current++;
     };
   }, [selected]);
+  useEffect(() => {
+    setEvidenceReady(false);
+  }, [detail?.item.taskId]);
+  useEffect(() => {
+    if (!selected || !detail || detail.item.syncStatus === "ready") return;
+    const timer = setInterval(() => {
+      void loadDetail(selected)
+        .then(() => loadList())
+        .catch((e) => setError(e.message));
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [selected, detail?.item.syncStatus]);
   async function refresh() {
     setError("");
     setNotice("");
@@ -222,6 +255,36 @@ export function G01({ request }: { request: Request }) {
     (id ? "Tài khoản đã thay đổi quyền" : "Chưa giao");
   return (
     <div className="g01">
+      {summary && (
+        <section className="report-summary" aria-label="Báo cáo hồ sơ">
+          {(
+            [
+              ["all", "Tất cả", summary.total],
+              ["open", "Đang mở", summary.open],
+              ["overdue", "Quá hạn", summary.overdue],
+              ["completed", "Hoàn thành", summary.completed],
+            ] as const
+          ).map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              className="report-count"
+              aria-pressed={bucket === id}
+              onClick={() => {
+                setBucket(id);
+                setStatus("");
+                setMine(false);
+                setSearch("");
+                setQ("");
+                setPage(1);
+              }}
+            >
+              <span>{label}</span>
+              <strong>{count}</strong>
+            </button>
+          ))}
+        </section>
+      )}
       <div className="g01-toolbar">
         <div>
           <h2>Hồ sơ G01</h2>
@@ -479,10 +542,18 @@ export function G01({ request }: { request: Request }) {
                   <p>{detail.item.result}</p>
                 </div>
               )}
+              <Evidence
+                key={detail.item.id}
+                request={request}
+                caseId={detail.item.id}
+                taskId={detail.item.taskId}
+                onReady={setEvidenceReady}
+              />
               {detail.item.syncStatus !== "ready" ? (
                 <p className="message error">
                   Kết quả đồng bộ chưa được xác nhận. Hồ sơ đã được giữ lại để
-                  đối soát; hiện chưa thể chuyển bước.
+                  tự đối soát; trang tự cập nhật và sẽ mở lại thao tác khi phục
+                  hồi xong.
                 </p>
               ) : (
                 catalog && (
@@ -492,6 +563,7 @@ export function G01({ request }: { request: Request }) {
                     catalog={catalog}
                     busy={busy}
                     act={act}
+                    evidenceReady={evidenceReady}
                   />
                 )
               )}
@@ -677,6 +749,7 @@ function ReportFields({
   );
 }
 function Actions({
+  evidenceReady,
   item,
   catalog,
   busy,
@@ -685,6 +758,7 @@ function Actions({
   item: Case;
   catalog: Catalog;
   busy: boolean;
+  evidenceReady: boolean;
   act: (action: string, fields?: Record<string, unknown>) => Promise<void>;
 }) {
   const [reason, setReason] = useState(""),
@@ -896,10 +970,16 @@ function Actions({
               className="button primary"
               type="submit"
               value="submit"
-              disabled={busy}
+              disabled={busy || !evidenceReady}
             >
               Gửi nghiệm thu
             </button>
+            {!evidenceReady && (
+              <p>
+                Cần tải ít nhất một bằng chứng cho lần xử lý này và đợi quét
+                sạch để gửi nghiệm thu.
+              </p>
+            )}
           </div>
         </form>
       )}

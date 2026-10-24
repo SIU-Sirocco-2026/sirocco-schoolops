@@ -6,3 +6,6 @@ deployment:
   role: data_plane
   role_data_plane:
     config_provider: yaml
+nginx_config:
+  http:
+    client_max_body_size: 11m

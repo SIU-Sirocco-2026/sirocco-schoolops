@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Sirocco SchoolOps API
-  version: 0.2.0
+  version: 0.3.0
   description: Foundation and G01. All non-public endpoints verify JWT and current database membership. Local demo only.
 servers:
   - url: http://localhost:8088
@@ -107,6 +107,15 @@ paths:
     get:
       description: Only cases involving the caller in their current role or an eligible unclaimed team task. Technical admin has no implicit access.
       parameters:
+        - in: query
+          name: bucket
+          schema:
+            {
+              type: string,
+              enum: [all, open, overdue, completed],
+              default: all,
+            }
+          description: Report drill-down using exactly the same current-role case scope
         - {
             in: query,
             name: status,
@@ -149,7 +158,7 @@ paths:
         "401": { description: Missing or invalid token }
         "403": { description: Disabled membership }
     post:
-      description: Reporter creates a case and real verification task. Pins package/schema snapshot/workflow and exact definition ID. Replays return the same case; no automatic retry on an uncertain engine result.
+      description: Reporter creates a case and real verification task. Pins package/schema snapshot/workflow and exact definition ID. Replays return the same case; durable outbox and worker reconcile uncertain engine results.
       parameters:
         - {
             in: header,
@@ -167,7 +176,7 @@ paths:
         "200": { $ref: "#/components/responses/CaseResult" }
         "202":
           {
-            description: Case preserved with syncStatus pending/needs_reconciliation. Do not create another process; automatic reconciliation is phase 3.,
+            description: Case preserved with syncStatus pending/needs_reconciliation. Worker retries and reconciles automatically; poll detail rather than creating another process.,
           }
         "400":
           {
@@ -198,6 +207,17 @@ paths:
                 type: object
                 properties:
                   item: { $ref: "#/components/schemas/Case" }
+                  synchronization:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        action: { type: string }
+                        state: { enum: [pending, blocked] }
+                        attempts: { type: integer }
+                        lastError: { type: [string, "null"] }
+                        nextAttemptAt: { type: string, format: date-time }
                   timeline:
                     type: array
                     items:
@@ -284,7 +304,7 @@ paths:
         "200": { $ref: "#/components/responses/CaseResult" }
         "202":
           {
-            description: Engine outcome uncertain; case retained and actions blocked until reconciliation. No automatic phase 2 recovery.,
+            description: Engine outcome uncertain; case retained and actions blocked until reconciliation. Durable worker retries with backoff and reconciles by business key / exact task history.,
           }
         "400":
           {
@@ -298,10 +318,119 @@ paths:
         "404": { description: Case missing or outside caller permissions }
         "409":
           {
-            description: "Stale revision, unavailable assignee/team, or engine/task mapping conflict",
+            description: "EVIDENCE_REQUIRED: missing clean evidence for current repair task; stale revision, unavailable assignee/team, or engine/task mapping conflict",
           }
         "413": { description: JSON payload exceeds 64 KB }
         "503": { description: Dependency unavailable before command accepted }
+  /api/g01/reports:
+    get:
+      description: Counts over the same current-membership and case permission scope as GET cases. Overdue means not closed and dueAt is before database now. Admin has no implicit access. Use cases?bucket=open|overdue|completed for drill-down.
+      responses:
+        "200":
+          description: Visible case counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open: { type: integer, minimum: 0 }
+                  overdue: { type: integer, minimum: 0 }
+                  completed: { type: integer, minimum: 0 }
+                  total: { type: integer, minimum: 0 }
+                  generatedAt: { type: string, format: date-time }
+        "401": { description: Missing or invalid token }
+        "403": { description: Disabled membership }
+  /api/g01/cases/{id}/evidence:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      description: Authorized case files and whether current user can upload; no public object keys or signed download URLs.
+      responses:
+        "200":
+          description: Evidence metadata including pending/clean/rejected/error, uploader, task, policy, checksum and scanner version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canUpload: { type: boolean }
+                  items:
+                    {
+                      type: array,
+                      items: { $ref: "#/components/schemas/Evidence" },
+                    }
+        "401": { description: Missing or invalid token }
+        "403": { description: Disabled membership }
+        "404": { description: Missing case or no current case permission }
+    post:
+      description: Raw binary upload. Reporter can upload while reporting/supplementing; assigned repairer while repairing. Case must be ready. PNG/JPEG/PDF/TXT signatures/extensions validated; files are quarantined until real ClamAV scan and promotion. Same case/uploader/key/content/filename returns existing evidence. Maximum 10 MiB.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: X-File-Name
+          required: true
+          schema: { type: string }
+          description: Percent-encoded UTF-8 filename, no path separators or control characters; max 180 decoded characters
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          {
+            description: Quarantined evidence created; inspect scanStatus before using it,
+          }
+        "200": { description: Idempotent replay of the existing evidence }
+        "400":
+          {
+            description: Invalid filename/type/content/key,
+            empty or malformed file,
+          }
+        "401": { description: Missing or invalid token }
+        "403":
+          { description: Disabled membership or UPLOAD_FORBIDDEN at this step }
+        "404": { description: Missing case or no current case permission }
+        "409":
+          {
+            description: Idempotency key already used for a different filename/content,
+          }
+        "413": { description: File exceeds 10 MiB }
+        "503":
+          {
+            description: Object store unavailable; retry with the same key and file,
+          }
+  /api/g01/cases/{id}/evidence/{evidenceId}/download:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: evidenceId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      description: Authenticated attachment; rechecks current membership/case permission, clean status, size and checksum. No-store and nosniff; no redirects to a public store.
+      responses:
+        "200":
+          description: Original clean bytes with attachment filename
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid UUID }
+        "401": { description: Missing or invalid token }
+        "403": { description: Membership revoked }
+        "404": { description: File/case absent or outside case permission }
+        "409":
+          { description: FILE_NOT_CLEAN or FILE_INTEGRITY; download blocked }
+        "503": { description: Object store unavailable }
 components:
   responses:
     CaseResult:
@@ -337,6 +466,27 @@ components:
         roomId: { type: string, minLength: 1, maxLength: 40 }
         assetId: { type: [string, "null"], minLength: 1, maxLength: 60 }
         description: { type: string, minLength: 10, maxLength: 4000 }
+    Evidence:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        caseId: { type: string, format: uuid }
+        filename: { type: string }
+        mime: { enum: [image/png, image/jpeg, application/pdf, text/plain] }
+        size: { type: integer, minimum: 1, maximum: 10485760 }
+        checksum: { type: string, pattern: "^[a-f0-9]{64}$" }
+        uploadedBy: { type: string, format: uuid }
+        step: { type: string }
+        taskId: { type: [string, "null"] }
+        policyVersion: { type: string }
+        packageVersion: { type: string }
+        scanStatus: { enum: [pending, clean, rejected, error] }
+        scanVersion: { type: [string, "null"] }
+        scanMessage: { type: [string, "null"] }
+        attempts: { type: integer }
+        nextAttemptAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        scannedAt: { type: [string, "null"], format: date-time }
     Case:
       type: object
       properties:
@@ -362,6 +512,12 @@ components:
         packageVersion: { type: string }
         schemaVersion: { type: string }
         workflowVersion: { type: string }
+        evidencePolicyVersion: { type: string }
+        evidencePolicy:
+          {
+            type: object,
+            description: Immutable policy snapshot; submit requires at least one clean repair file for the current task,
+          }
         measures: { type: [string, "null"] }
         result: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }

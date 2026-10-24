@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { remoteKey } from "./auth.js";
 import { migrate, pool, technicianId } from "./db.js";
 import { Flowable } from "./workflow.js";
+import { ObjectStore } from "./storage.js";
 
 function required(name: string) {
   const value = process.env[name];
@@ -9,6 +10,7 @@ function required(name: string) {
   return value;
 }
 const issuer = required("OIDC_ISSUER");
+const store = new ObjectStore();
 const workflow = new Flowable(
   required("FLOWABLE_URL"),
   required("FLOWABLE_USER"),
@@ -22,6 +24,7 @@ async function initialize() {
   initializing = true;
   try {
     await migrate();
+    await store.ready();
     await workflow.ready();
     definition = await workflow.deploy(required("BPMN_PATH"));
     g01Definition = await workflow.deploy(
@@ -39,6 +42,7 @@ async function initialize() {
   }
 }
 const app = createApp({
+  store,
   pool,
   workflow,
   issuer,

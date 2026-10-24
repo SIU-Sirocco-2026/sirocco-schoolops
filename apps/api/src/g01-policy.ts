@@ -1,5 +1,11 @@
 import type { Principal } from "./auth.js";
 
+// Shared by list and report/drill-down. Technical admin has no implicit access.
+export const caseScopeSql = `(('reporter'=ANY($2::text[]) AND reporter_id=$1) OR
+ ('coordinator'=ANY($2::text[]) AND coordinator_id=$1) OR ('approver'=ANY($2::text[]) AND approver_id=$1) OR
+ ('technician'=ANY($2::text[]) AND (technician_id=$1 OR
+ (status='assigned' AND technician_id IS NULL AND team_id=ANY($3::text[])))))`;
+
 export const steps = {
   verification: "verify",
   supplement: "supplement",

@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { enqueueCommand, executeCommand, recordCaseEvent } from "./outbox.js";
+import { evidenceRouter, requireCleanEvidence } from "./evidence.js";
+import type { EvidenceStore } from "./storage.js";
 import { readFileSync } from "node:fs";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
@@ -12,11 +15,18 @@ import {
   steps,
   type CaseStatus,
   type CaseAccess,
+  caseScopeSql,
 } from "./g01-policy.js";
 
 const schemaSnapshot = JSON.parse(
   readFileSync(
     new URL("../../../packs/g01/v1/schema.json", import.meta.url),
+    "utf8",
+  ),
+);
+const evidencePolicy = JSON.parse(
+  readFileSync(
+    new URL("../../../packs/g01/v1/evidence-policy.json", import.meta.url),
     "utf8",
   ),
 );
@@ -84,11 +94,16 @@ type CaseRow = CaseAccess & {
   measures: string | null;
   result: string | null;
   request_hash: string;
+  evidence_policy_version: string;
+  evidence_policy: {
+    submit: { minClean: number; step: string; currentTask: boolean };
+  };
 };
 type Options = {
   pool: pg.Pool;
   workflow: Flowable;
   definitionId: () => string | undefined;
+  store?: EvidenceStore;
 };
 function fail(status: number, code: string, message: string): never {
   throw new HttpError(status, code, message);
@@ -173,6 +188,8 @@ function view(row: CaseRow, user: Principal, teams: string[]) {
     decisionBy: row.decision_by,
     measures: row.measures,
     result: row.result,
+    evidencePolicyVersion: row.evidence_policy_version,
+    evidencePolicy: row.evidence_policy,
     actions: caseActions(user, row, teams),
   };
 }
@@ -184,17 +201,13 @@ async function event(
   from: string | null,
   details: unknown,
 ) {
-  await db.query(
-    "INSERT INTO case_events(case_id,actor_id,action,from_status,to_status,details,revision) VALUES($1,$2,$3,$4,$5,$6,$7)",
-    [
-      row.id,
-      actor,
-      action,
-      from,
-      row.status,
-      JSON.stringify(details),
-      row.revision,
-    ],
+  await recordCaseEvent(
+    db,
+    row,
+    actor,
+    action,
+    from,
+    details as Record<string, unknown>,
   );
 }
 async function checkEngine(workflow: Flowable, row: CaseRow) {
@@ -230,7 +243,7 @@ async function checkEngine(workflow: Flowable, row: CaseRow) {
   }
   return task!;
 }
-export function g01Router({ pool, workflow, definitionId }: Options) {
+export function g01Router({ pool, workflow, definitionId, store }: Options) {
   const router = Router();
   router.get("/catalog", async (_req, res) => {
     const user = res.locals.principal as Principal;
@@ -253,6 +266,19 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
       versions: refs,
     });
   });
+  router.use(evidenceRouter(pool, store));
+  router.get("/reports", async (req, res) => {
+    const user = res.locals.principal as Principal,
+      teams = await teamsFor(pool, user);
+    const rows = await pool.query(
+      `SELECT count(*) FILTER(WHERE status<>'closed')::int AS open,
+      count(*) FILTER(WHERE status<>'closed' AND due_at<now())::int AS overdue,
+      count(*) FILTER(WHERE status='closed')::int AS completed,
+      count(*)::int AS total FROM cases WHERE ${caseScopeSql}`,
+      [user.id, user.roles, teams],
+    );
+    res.json({ ...rows.rows[0], generatedAt: new Date().toISOString() });
+  });
   router.get("/cases", async (req, res) => {
     const user = res.locals.principal as Principal,
       teams = await teamsFor(pool, user);
@@ -262,20 +288,21 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           .enum(Object.keys(steps) as [CaseStatus, ...CaseStatus[]])
           .optional(),
         q: z.string().trim().max(160).optional(),
+        bucket: z.enum(["all", "open", "overdue", "completed"]).default("all"),
         mine: z.enum(["true", "false"]).optional(),
         page: z.coerce.number().int().min(1).max(100000).default(1),
       })
       .strict()
       .safeParse(req.query);
     if (!filter.success) fail(400, "INVALID_FILTER", "Bộ lọc không hợp lệ.");
-    const { status, q, mine, page } = filter.data;
+    const { status, q, mine, page, bucket } = filter.data;
     const result = await pool.query<CaseRow>(
       `SELECT * FROM cases WHERE
-      (('reporter'=ANY($2::text[]) AND reporter_id=$1) OR ('coordinator'=ANY($2::text[]) AND coordinator_id=$1) OR ('approver'=ANY($2::text[]) AND approver_id=$1) OR
-      ('technician'=ANY($2::text[]) AND (technician_id=$1 OR (status='assigned' AND technician_id IS NULL AND team_id=ANY($3::text[])))))
+      ${caseScopeSql}
       AND ($4::text IS NULL OR status=$4) AND ($5::text IS NULL OR strpos(lower(code || ' ' || title || ' ' || description),lower($5))>0)
+      AND ($6='all' OR ($6='open' AND status<>'closed') OR ($6='overdue' AND status<>'closed' AND due_at<now()) OR ($6='completed' AND status='closed'))
       ORDER BY created_at DESC,id`,
-      [user.id, user.roles, teams, status || null, q || null],
+      [user.id, user.roles, teams, status || null, q || null, bucket],
     );
     const items = result.rows
       .map((r) => view(r, user, teams))
@@ -306,7 +333,15 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
       `SELECT e.id::text,e.action,e.from_status AS "fromStatus",e.to_status AS "toStatus",e.actor_id AS "actorId",m.display_name AS "actorName",e.created_at AS "createdAt",e.details,e.revision FROM case_events e JOIN memberships m ON m.subject_id=e.actor_id WHERE case_id=$1 ORDER BY e.id`,
       [row.id],
     );
-    res.json({ item: view(row, user, teams), timeline: events.rows });
+    const commands = await pool.query(
+      `SELECT id,action,state,attempts,last_error AS "lastError",next_attempt_at AS "nextAttemptAt" FROM workflow_commands WHERE case_id=$1 AND state<>'done' ORDER BY created_at`,
+      [row.id],
+    );
+    res.json({
+      item: view(row, user, teams),
+      timeline: events.rows,
+      synchronization: commands.rows,
+    });
   });
   router.post("/cases", async (req, res) => {
     const user = res.locals.principal as Principal;
@@ -345,6 +380,7 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
     if (!definition) fail(503, "ENGINE_NOT_READY", "Quy trình đang khởi động.");
     const client = await pool.connect();
     let row: CaseRow;
+    let commandId: string | undefined;
     try {
       await client.query("BEGIN");
       await validateCatalog(client, data);
@@ -356,7 +392,7 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
       if (!coordinator)
         fail(409, "NO_COORDINATOR", "Chưa có điều phối được cấp quyền.");
       const inserted = await client.query<CaseRow>(
-        `INSERT INTO cases(id,title,room_id,asset_id,description,reporter_id,coordinator_id,status,sync_status,definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash) VALUES($1,$2,$3,$4,$5,$6,$7,'verification','pending',$8,$9,$10,$11,$12,$13,$14) ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
+        `INSERT INTO cases(id,title,room_id,asset_id,description,reporter_id,coordinator_id,status,sync_status,definition_id,package_version,schema_version,workflow_version,schema_snapshot,idempotency_key,request_hash,evidence_policy,evidence_policy_version) VALUES($1,$2,$3,$4,$5,$6,$7,'verification','pending',$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT(reporter_id,idempotency_key) DO NOTHING RETURNING *`,
         [
           randomUUID(),
           data.title,
@@ -372,6 +408,8 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           JSON.stringify(schemaSnapshot),
           key.data,
           hash,
+          JSON.stringify(evidencePolicy),
+          evidencePolicy.version,
         ],
       );
       if (!inserted.rowCount) {
@@ -394,17 +432,13 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
       }
       row = inserted.rows[0]!;
       await event(client, row, user.id, "created", null, data);
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-    try {
-      const process = await workflow.startWithVariables(
-        row.definition_id,
-        row.id,
+      commandId = await enqueueCommand(
+        client,
+        row,
+        user.id,
+        "created",
+        row.status,
+        row,
         {
           coordinator: row.coordinator_id,
           reporter: user.id,
@@ -413,35 +447,28 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           approver: "",
           dueAt: "",
         },
+        data,
       );
-      const tasks = await workflow.tasks(process.id),
-        task = tasks[0];
-      if (
-        tasks.length !== 1 ||
-        task?.taskDefinitionKey !== "verify" ||
-        task.assignee !== row.coordinator_id
-      )
-        throw new Error("Initial task mismatch");
-      row = (
-        await pool.query<CaseRow>(
-          "UPDATE cases SET process_id=$2,task_id=$3,task_key=$4,sync_status='ready',updated_at=now() WHERE id=$1 RETURNING *",
-          [row.id, process.id, task.id, task.taskDefinitionKey],
-        )
-      ).rows[0]!;
-      return res.status(201).json({ item: view(row, user, []) });
-    } catch {
-      row = (
-        await pool.query<CaseRow>(
-          "UPDATE cases SET sync_status='needs_reconciliation',updated_at=now() WHERE id=$1 RETURNING *",
-          [row.id],
-        )
-      ).rows[0]!;
-      return res.status(202).json({
-        item: view(row, user, []),
-        message:
-          "Đã giữ hồ sơ; kết quả engine chưa chắc chắn, cần đối soát trước khi xử lý.",
-      });
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
     }
+    await executeCommand(pool, workflow, commandId);
+    row = (
+      await pool.query<CaseRow>("SELECT * FROM cases WHERE id=$1", [row.id])
+    ).rows[0]!;
+    return res.status(row.sync_status === "ready" ? 201 : 202).json({
+      item: view(row, user, []),
+      ...(row.sync_status !== "ready"
+        ? {
+            message:
+              "Hồ sơ đã được lưu; hệ thống sẽ tự nối lại quy trình khi dịch vụ sẵn sàng.",
+          }
+        : {}),
+    });
   });
   router.post("/cases/:id/actions", async (req, res) => {
     parseId(req.params.id);
@@ -460,6 +487,7 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
       details: Record<string, unknown> = {},
       variables: Record<string, string | boolean> = {};
     let from: CaseStatus;
+    let commandId: string | undefined;
     try {
       await client.query("BEGIN");
       const current = (
@@ -580,6 +608,8 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           if (!row.approver_id)
             fail(409, "NO_APPROVER", "Chưa có người nghiệm thu.");
           await requireRole(client, row.approver_id, "approver");
+          const evidence = await requireCleanEvidence(client, row);
+          details.evidence = evidence;
           next.status = "acceptance";
         }
       }
@@ -593,9 +623,14 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
         variables.approved = true;
         next.decision_by = user.id;
       }
-      await checkEngine(workflow, row);
-      // Persist intent before a network mutation. An uncertain result blocks further writes;
-      // phase 3 adds worker reconciliation, rather than blindly repeating this command.
+      try {
+        await checkEngine(workflow, row);
+      } catch (error) {
+        // A proven mismatch is rejected. An unavailable engine must not discard
+        // an otherwise valid request: the durable executor checks it on recovery.
+        if (error instanceof HttpError) throw error;
+      }
+      // Commit the full command atomically with its pending projection before sending it.
       await client.query(
         "UPDATE cases SET sync_status='pending',revision=$2,updated_at=now() WHERE id=$1",
         [row.id, next.revision],
@@ -619,6 +654,16 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
         from,
         { action: input.action, ...details },
       );
+      commandId = await enqueueCommand(
+        client,
+        row,
+        user.id,
+        input.action,
+        from,
+        next,
+        variables,
+        details,
+      );
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -626,80 +671,19 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
     } finally {
       client.release();
     }
-    try {
-      if (input.action === "receive" && !row.technician_id)
-        await workflow.claim(row.task_id!, user.id);
-      await workflow.complete(row.task_id!, variables);
-      let task: EngineTask | undefined;
-      if (next.status === "closed") {
-        if (!(await workflow.finished(row.process_id!)))
-          throw new Error("Process not finished");
-      } else {
-        const tasks = await workflow.tasks(row.process_id!);
-        task = tasks[0];
-        if (
-          tasks.length !== 1 ||
-          task?.taskDefinitionKey !== steps[next.status]
-        )
-          throw new Error("Next task mismatch");
-        const expected =
-          next.status === "supplement"
-            ? next.reporter_id
-            : ["verification", "assignment"].includes(next.status)
-              ? next.coordinator_id
-              : ["assigned", "in_progress"].includes(next.status)
-                ? next.technician_id
-                : next.approver_id;
-        if ((task.assignee || null) !== expected)
-          throw new Error("Next assignee mismatch");
-      }
-      const db = await pool.connect();
-      try {
-        await db.query("BEGIN");
-        const saved = (
-          await db.query<CaseRow>(
-            `UPDATE cases SET title=$2,room_id=$3,asset_id=$4,description=$5,technician_id=$6,team_id=$7,approver_id=$8,due_at=$9,status=$10,task_id=$11,task_key=$12,measures=$13,result=$14,decision_by=$15,closed_at=CASE WHEN $10='closed' THEN now() ELSE closed_at END,sync_status='ready',updated_at=now() WHERE id=$1 RETURNING *`,
-            [
-              row.id,
-              next.title,
-              next.room_id,
-              next.asset_id,
-              next.description,
-              next.technician_id,
-              next.team_id,
-              next.approver_id,
-              next.due_at,
-              next.status,
-              task?.id || null,
-              task?.taskDefinitionKey || null,
-              next.measures,
-              next.result,
-              next.decision_by,
-            ],
-          )
-        ).rows[0]!;
-        await event(db, saved, user.id, input.action, from, details);
-        await db.query("COMMIT");
-        res.json({ item: view(saved, user, await teamsFor(pool, user)) });
-      } catch (error) {
-        await db.query("ROLLBACK");
-        throw error;
-      } finally {
-        db.release();
-      }
-    } catch {
-      const saved = (
-        await pool.query<CaseRow>(
-          "UPDATE cases SET sync_status='needs_reconciliation',updated_at=now() WHERE id=$1 RETURNING *",
-          [row.id],
-        )
-      ).rows[0]!;
-      res.status(202).json({
-        item: view(saved, user, await teamsFor(pool, user)),
-        message:
-          "Thao tác chưa được xác nhận đầy đủ. Hồ sơ đang chờ đối soát; không gửi lặp để đẩy bước.",
-      });
-    }
+    await executeCommand(pool, workflow, commandId);
+    const saved = (
+      await pool.query<CaseRow>("SELECT * FROM cases WHERE id=$1", [row.id])
+    ).rows[0]!;
+    res.status(saved.sync_status === "ready" ? 200 : 202).json({
+      item: view(saved, user, await teamsFor(pool, user)),
+      ...(saved.sync_status !== "ready"
+        ? {
+            message:
+              "Thao tác đã được lưu, đang tự đối soát. Làm mới để xem kết quả; không cần gửi lại.",
+          }
+        : {}),
+    });
   });
   return router;
 }

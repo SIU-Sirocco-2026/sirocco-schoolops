@@ -98,6 +98,34 @@ export class Flowable {
     );
     return result.data.some((item) => item.id === processId);
   }
+  async processesByBusinessKey(key: string) {
+    return (
+      await this.request<{
+        data: { id: string; processDefinitionId: string }[];
+      }>(
+        `history/historic-process-instances?businessKey=${encodeURIComponent(key)}&size=10`,
+      )
+    ).data;
+  }
+  async taskEnded(id: string, processId: string) {
+    const history = await this.request<{
+      data: {
+        id: string;
+        processInstanceId: string;
+        endTime: string | null;
+        deleteReason: string | null;
+      }[];
+    }>(
+      `history/historic-task-instances?taskId=${encodeURIComponent(id)}&processInstanceId=${encodeURIComponent(processId)}&finished=true`,
+    );
+    return history.data.some(
+      (t) =>
+        t.id === id &&
+        t.processInstanceId === processId &&
+        t.endTime &&
+        !t.deleteReason,
+    );
+  }
   complete(taskId: string, variables: Record<string, string | boolean> = {}) {
     return this.request(`runtime/tasks/${encodeURIComponent(taskId)}`, {
       method: "POST",

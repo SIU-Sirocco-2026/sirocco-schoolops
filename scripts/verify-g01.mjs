@@ -90,6 +90,30 @@ const payload = {
 const key = crypto.randomUUID();
 let item;
 const action = async (role, name, fields = {}, expected = 200) => {
+  if (name === "submit" && expected === 200) {
+    const upload = await fetch(`${base}/cases/${item.id}/evidence`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tokens.technician}`,
+        "Content-Type": "application/octet-stream",
+        "X-File-Name": "ket-qua.txt",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: Buffer.from("Kết quả sửa chữa giả lập đã kiểm tra thiết bị."),
+    });
+    assert.equal(upload.status, 201, await upload.text());
+    for (let i = 0; i < 90; i++) {
+      const files = await call("technician", `/cases/${item.id}/evidence`);
+      if (
+        files.items.some(
+          (f) => f.taskId === item.taskId && f.scanStatus === "clean",
+        )
+      )
+        break;
+      if (i === 89) throw Error("Scan did not finish");
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
   const data = await call(
     role,
     `/cases/${item.id}/actions`,

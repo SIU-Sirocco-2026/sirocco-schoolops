@@ -34,12 +34,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   await keycloak.updateToken(30);
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${keycloak.token}`);
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (init.body && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
   const response = await fetch(path, { ...init, headers });
-  const data = await response.json();
-  if (!response.ok)
+  if (!response.ok) {
+    const data = await response.json();
     throw new Error(data.error?.message || "Không thể tải dữ liệu.");
-  return data as T;
+  }
+  return (
+    response.headers.get("content-type")?.includes("application/json")
+      ? await response.json()
+      : await response.blob()
+  ) as T;
 }
 function date(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
