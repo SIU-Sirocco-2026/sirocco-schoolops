@@ -4,7 +4,7 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Đã bổ sung mã nền tảng giai đoạn 1: web/API, PostgreSQL, Keycloak, APISIX và một nhiệm vụ Flowable. Việc nghiệm thu tích hợp cần chạy đạt bộ kiểm tra thật; không suy từ mã đã có thành chức năng đã hoàn thành.
+Nền tảng giai đoạn 1 đã chạy được trên local: web/API, PostgreSQL, Keycloak, APISIX và một nhiệm vụ Flowable. Đã kiểm chứng luồng tạo/hoàn tất qua hai tài khoản trên trình duyệt, quyền và gửi lặp. Xem [kết quả kiểm chứng](docs/verification/phase-1.md) và trạng thái CI của phiên bản cần dùng.
 
 Xem [hướng dẫn giai đoạn 1](docs/PHASE-1.md) để cài đặt, thử luồng, hiểu kiến trúc và làm quen từng phần. Hợp đồng API ở [OpenAPI](docs/openapi.yaml).
 

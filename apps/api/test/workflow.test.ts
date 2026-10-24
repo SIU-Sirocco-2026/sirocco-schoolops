@@ -58,3 +58,32 @@ test("an uncertain process creation is not automatically sent a second time", as
     await service.close();
   }
 });
+
+test("startup reuses the versioned deployment and selects its exact definition", async () => {
+  const paths: string[] = [];
+  const service = await engine((req, res) => {
+    paths.push(req.url!);
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/repository/deployments?name=sirocco-foundation-v1-0-0") {
+      res.end(JSON.stringify({ data: [{ id: "deployment-v1" }] }));
+    } else if (
+      req.url === "/repository/process-definitions?deploymentId=deployment-v1"
+    ) {
+      res.end(
+        JSON.stringify({ data: [{ id: "foundation-task:1:definition-v1" }] }),
+      );
+    } else {
+      res.writeHead(400);
+      res.end("{}");
+    }
+  });
+  try {
+    assert.equal(
+      await service.adapter.deploy("unused-when-already-deployed.xml"),
+      "foundation-task:1:definition-v1",
+    );
+    assert.equal(paths.length, 2);
+  } finally {
+    await service.close();
+  }
+});

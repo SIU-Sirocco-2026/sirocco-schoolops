@@ -35,25 +35,30 @@ export class Flowable {
   }
   async deploy(path: string) {
     // The deployed name is immutable in phase 1. Later revisions use a new package version.
-    const name = "sirocco-foundation-1.0.0";
+    // Flowable derives the deployment name from the filename before its first dot.
+    const name = "sirocco-foundation-v1-0-0";
     const existing = await this.request<{ data: { id: string }[] }>(
       `repository/deployments?name=${name}`,
     );
-    if (!existing.data.length) {
+    let deploymentId = existing.data[0]?.id;
+    if (!deploymentId) {
       const data = new FormData();
       data.append(
-        "file",
+        name,
         new Blob([await readFile(path, "utf8")], { type: "application/xml" }),
-        "task.bpmn20.xml",
+        `${name}.bpmn20.xml`,
       );
-      await this.request("repository/deployments", {
-        method: "POST",
-        body: data,
-        headers: { "Deployment-Name": name },
-      });
+      const deployed = await this.request<{ id: string }>(
+        "repository/deployments",
+        {
+          method: "POST",
+          body: data,
+        },
+      );
+      deploymentId = deployed.id;
     }
     const definitions = await this.request<{ data: { id: string }[] }>(
-      "repository/process-definitions?key=foundation-task&latest=true",
+      `repository/process-definitions?deploymentId=${encodeURIComponent(deploymentId)}`,
     );
     const id = definitions.data[0]?.id;
     if (!id) throw new Error("Foundation workflow not deployed");
