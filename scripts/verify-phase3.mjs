@@ -223,6 +223,47 @@ await check(
     );
     row = await ready(copies[0].item.id);
     cases.push(row.id);
+    // Exercise actual image/document bytes as well as text on the real store/scanner.
+    // Reporting-step files remain visible but cannot satisfy the later repair-task gate.
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jvWQAAAAASUVORK5CYII=",
+      "base64",
+    );
+    const pdf = Buffer.from(
+      "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Count 0 /Kids [] >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF",
+    );
+    for (const [data, filename, mime] of [
+      [png, "anh-hien-trang.png", "image/png"],
+      [pdf, "tai-lieu.pdf", "application/pdf"],
+    ]) {
+      const file = await upload(
+        row,
+        data,
+        filename,
+        randomUUID(),
+        201,
+        "reporter",
+      );
+      assert.equal(file.mime, mime);
+      for (let i = 0; i < 90; i++) {
+        const state = (
+          await call("reporter", `/cases/${row.id}/evidence`)
+        ).items.find((f) => f.id === file.id);
+        if (state.scanStatus === "clean") break;
+        if (i === 89) throw Error("Image/document scan timed out");
+        await sleep(1000);
+      }
+      assert.deepEqual(
+        Buffer.from(
+          await (await download(row, file, "reporter")).arrayBuffer(),
+        ),
+        data,
+      );
+      const denied = inside(
+        `const r=await fetch('http://seaweedfs:8333/clean/${row.id}/${file.id}');console.log(r.status);`,
+      );
+      assert.equal(denied.trim(), "403");
+    }
     assert.ok(copies.every((c) => c.item.id === row.id));
     assert.equal(
       sql(
@@ -306,7 +347,10 @@ await check(
       413,
     );
     await upload(row, Buffer.from("safe"), "../unsafe.txt", randomUUID(), 400);
-    assert.equal((await files(row)).length, 0);
+    assert.equal(
+      (await files(row)).filter((f) => f.taskId === row.taskId).length,
+      0,
+    );
   },
 );
 await check(
