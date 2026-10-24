@@ -1,0 +1,24 @@
+name: Đề xuất chức năng
+description: Chốt nhu cầu, phạm vi và điều kiện hoàn thành trước khi triển khai.
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Nhu cầu của người dùng
+      description: Ai cần chức năng này và họ muốn giải quyết việc gì?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Phạm vi thay đổi
+      description: Các hành vi cần có; nêu phần để giai đoạn sau nếu cần.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Điều kiện hoàn thành
+      description: Những thao tác và kết quả cụ thể chứng minh chức năng đã chạy đúng.
+    validations:
+      required: true

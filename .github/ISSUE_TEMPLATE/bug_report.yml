@@ -1,0 +1,22 @@
+name: Báo lỗi
+description: Mô tả lỗi có thể tái hiện và kết quả mong muốn.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Lỗi và kết quả mong muốn
+      description: Điều gì đang sai và hành vi đúng cần là gì?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Cách tái hiện
+      description: Ghi vai trò, thao tác và thông báo lỗi; không gửi mật khẩu hoặc token.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Phiên bản và môi trường
+      description: Commit/nhánh, hệ điều hành, trình duyệt và tình trạng dịch vụ liên quan.
