@@ -25,7 +25,6 @@ const refs = {
   schema: "g01-case@1.0.0",
   workflow: "g01-facilities@1.0.0",
 };
-const supportedActions: string[] = ["accept", "return_info", "resubmit", "assign", "receive", "save_work", "submit"];
 const report = z
   .object({
     title: z.string().trim().min(5).max(160),
@@ -174,7 +173,7 @@ function view(row: CaseRow, user: Principal, teams: string[]) {
     decisionBy: row.decision_by,
     measures: row.measures,
     result: row.result,
-    actions: caseActions(user, row, teams).filter(action=>supportedActions.includes(action)),
+    actions: caseActions(user, row, teams),
   };
 }
 async function event(
@@ -453,7 +452,6 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
         "INVALID_ACTION",
         "Dữ liệu thao tác thiếu hoặc không hợp lệ; lý do tối thiểu 5 ký tự, biện pháp/kết quả tối thiểu 5 ký tự.",
       );
-    if (!supportedActions.includes(parsed.data.action)) fail(400, "UNSUPPORTED_ACTION", "Thao tác chưa được hỗ trợ ở bản này.");
     const input = parsed.data,
       user = res.locals.principal as Principal;
     const client = await pool.connect();
@@ -584,6 +582,16 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
           await requireRole(client, row.approver_id, "approver");
           next.status = "acceptance";
         }
+      }
+      if (input.action === "return_work") {
+        next.status = "in_progress";
+        variables.approved = false;
+        details = { reason: input.reason };
+      }
+      if (input.action === "approve") {
+        next.status = "closed";
+        variables.approved = true;
+        next.decision_by = user.id;
       }
       await checkEngine(workflow, row);
       // Persist intent before a network mutation. An uncertain result blocks further writes;
