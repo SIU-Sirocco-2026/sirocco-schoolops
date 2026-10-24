@@ -25,7 +25,7 @@ const refs = {
   schema: "g01-case@1.0.0",
   workflow: "g01-facilities@1.0.0",
 };
-const supportedActions: string[] = [];
+const supportedActions: string[] = ["accept", "return_info", "resubmit"];
 const report = z
   .object({
     title: z.string().trim().min(5).max(160),
@@ -441,6 +441,185 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
         item: view(row, user, []),
         message:
           "Đã giữ hồ sơ; kết quả engine chưa chắc chắn, cần đối soát trước khi xử lý.",
+      });
+    }
+  });
+  router.post("/cases/:id/actions", async (req, res) => {
+    parseId(req.params.id);
+    const parsed = actionSchema.safeParse(req.body);
+    if (!parsed.success)
+      fail(
+        400,
+        "INVALID_ACTION",
+        "Dữ liệu thao tác thiếu hoặc không hợp lệ; lý do tối thiểu 5 ký tự, biện pháp/kết quả tối thiểu 5 ký tự.",
+      );
+    if (!supportedActions.includes(parsed.data.action)) fail(400, "UNSUPPORTED_ACTION", "Thao tác chưa được hỗ trợ ở bản này.");
+    const input = parsed.data,
+      user = res.locals.principal as Principal;
+    const client = await pool.connect();
+    let row: CaseRow,
+      next: CaseRow,
+      details: Record<string, unknown> = {},
+      variables: Record<string, string | boolean> = {};
+    let from: CaseStatus;
+    try {
+      await client.query("BEGIN");
+      const current = (
+        await client.query<CaseRow>(
+          "SELECT * FROM cases WHERE id=$1 FOR UPDATE",
+          [req.params.id],
+        )
+      ).rows[0];
+      const teams = await teamsFor(client, user);
+      if (!current || !canReadCase(user, current, teams))
+        fail(
+          404,
+          "NOT_FOUND",
+          "Không tìm thấy hồ sơ hoặc bạn không có quyền xem.",
+        );
+      row = current;
+      from = row.status;
+      if (!caseActions(user, row, teams).includes(input.action))
+        fail(
+          403,
+          "FORBIDDEN_ACTION",
+          "Bạn không được thực hiện thao tác này ở bước hiện tại.",
+        );
+      if (row.revision !== input.revision)
+        fail(
+          409,
+          "STALE_REVISION",
+          "Hồ sơ đã thay đổi. Làm mới trước khi thao tác tiếp.",
+        );
+      next = { ...row, revision: row.revision + 1 };
+      if (input.action === "accept") {
+        next.status = "assignment";
+        variables.verified = true;
+      }
+      if (input.action === "return_info") {
+        next.status = "supplement";
+        variables.verified = false;
+        details = { reason: input.reason };
+      }
+      if (input.action === "resubmit") {
+        await validateCatalog(client, input);
+        next.status = "verification";
+        next.title = input.title;
+        next.room_id = input.roomId;
+        next.asset_id = input.assetId || null;
+        next.description = input.description;
+        details = {
+          title: input.title,
+          roomId: input.roomId,
+          assetId: input.assetId || null,
+          description: input.description,
+        };
+      }
+      await checkEngine(workflow, row);
+      // Persist intent before a network mutation. An uncertain result blocks further writes;
+      // phase 3 adds worker reconciliation, rather than blindly repeating this command.
+      await client.query(
+        "UPDATE cases SET sync_status='pending',revision=$2,updated_at=now() WHERE id=$1",
+        [row.id, next.revision],
+      );
+      if (input.action === "save_work") {
+        const saved = (
+          await client.query<CaseRow>(
+            "UPDATE cases SET measures=$2,result=$3,sync_status='ready' WHERE id=$1 RETURNING *",
+            [row.id, next.measures, next.result],
+          )
+        ).rows[0]!;
+        await event(client, saved, user.id, input.action, from, details);
+        await client.query("COMMIT");
+        return res.json({ item: view(saved, user, teams) });
+      }
+      await event(
+        client,
+        { ...row, revision: next.revision },
+        user.id,
+        "action_requested",
+        from,
+        { action: input.action, ...details },
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    try {
+      if (input.action === "receive" && !row.technician_id)
+        await workflow.claim(row.task_id!, user.id);
+      await workflow.complete(row.task_id!, variables);
+      let task: EngineTask | undefined;
+      if (next.status === "closed") {
+        if (!(await workflow.finished(row.process_id!)))
+          throw new Error("Process not finished");
+      } else {
+        const tasks = await workflow.tasks(row.process_id!);
+        task = tasks[0];
+        if (
+          tasks.length !== 1 ||
+          task?.taskDefinitionKey !== steps[next.status]
+        )
+          throw new Error("Next task mismatch");
+        const expected =
+          next.status === "supplement"
+            ? next.reporter_id
+            : ["verification", "assignment"].includes(next.status)
+              ? next.coordinator_id
+              : ["assigned", "in_progress"].includes(next.status)
+                ? next.technician_id
+                : next.approver_id;
+        if ((task.assignee || null) !== expected)
+          throw new Error("Next assignee mismatch");
+      }
+      const db = await pool.connect();
+      try {
+        await db.query("BEGIN");
+        const saved = (
+          await db.query<CaseRow>(
+            `UPDATE cases SET title=$2,room_id=$3,asset_id=$4,description=$5,technician_id=$6,team_id=$7,approver_id=$8,due_at=$9,status=$10,task_id=$11,task_key=$12,measures=$13,result=$14,decision_by=$15,closed_at=CASE WHEN $10='closed' THEN now() ELSE closed_at END,sync_status='ready',updated_at=now() WHERE id=$1 RETURNING *`,
+            [
+              row.id,
+              next.title,
+              next.room_id,
+              next.asset_id,
+              next.description,
+              next.technician_id,
+              next.team_id,
+              next.approver_id,
+              next.due_at,
+              next.status,
+              task?.id || null,
+              task?.taskDefinitionKey || null,
+              next.measures,
+              next.result,
+              next.decision_by,
+            ],
+          )
+        ).rows[0]!;
+        await event(db, saved, user.id, input.action, from, details);
+        await db.query("COMMIT");
+        res.json({ item: view(saved, user, await teamsFor(pool, user)) });
+      } catch (error) {
+        await db.query("ROLLBACK");
+        throw error;
+      } finally {
+        db.release();
+      }
+    } catch {
+      const saved = (
+        await pool.query<CaseRow>(
+          "UPDATE cases SET sync_status='needs_reconciliation',updated_at=now() WHERE id=$1 RETURNING *",
+          [row.id],
+        )
+      ).rows[0]!;
+      res.status(202).json({
+        item: view(saved, user, await teamsFor(pool, user)),
+        message:
+          "Thao tác chưa được xác nhận đầy đủ. Hồ sơ đang chờ đối soát; không gửi lặp để đẩy bước.",
       });
     }
   });
