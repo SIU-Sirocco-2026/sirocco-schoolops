@@ -9,7 +9,7 @@ permissions:
 jobs:
   foundation:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,6 +32,7 @@ jobs:
       - run: pnpm demo:up
       - run: pnpm demo:verify
       - run: pnpm demo:verify:g01
+      - run: pnpm demo:verify:phase3
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
@@ -43,6 +44,6 @@ jobs:
             playwright-report/
       - name: Service diagnostics on failure
         if: failure()
-        run: docker compose ps && docker compose logs --tail 80 api gateway flowable keycloak
+        run: docker compose ps && docker compose logs --tail 80 api gateway flowable keycloak worker clamav seaweedfs workflow-guard
       - if: always()
         run: docker compose down
