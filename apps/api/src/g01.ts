@@ -25,7 +25,7 @@ const refs = {
   schema: "g01-case@1.0.0",
   workflow: "g01-facilities@1.0.0",
 };
-const supportedActions: string[] = ["accept", "return_info", "resubmit", "assign", "receive"];
+const supportedActions: string[] = ["accept", "return_info", "resubmit", "assign", "receive", "save_work", "submit"];
 const report = z
   .object({
     title: z.string().trim().min(5).max(160),
@@ -573,6 +573,17 @@ export function g01Router({ pool, workflow, definitionId }: Options) {
         next.technician_id = user.id;
         variables.technician = user.id;
         details = { technicianId: user.id };
+      }
+      if (input.action === "save_work" || input.action === "submit") {
+        next.measures = input.measures;
+        next.result = input.result;
+        details = { measures: input.measures, result: input.result };
+        if (input.action === "submit") {
+          if (!row.approver_id)
+            fail(409, "NO_APPROVER", "Chưa có người nghiệm thu.");
+          await requireRole(client, row.approver_id, "approver");
+          next.status = "acceptance";
+        }
       }
       await checkEngine(workflow, row);
       // Persist intent before a network mutation. An uncertain result blocks further writes;
