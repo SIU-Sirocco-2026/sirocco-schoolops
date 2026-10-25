@@ -17,7 +17,9 @@ pnpm demo:users
 pnpm demo:verify
 ```
 
-Nếu dùng source archive, kiểm tra `SHA256SUMS` của release, giải nén vào thư mục mới rồi chạy các lệnh từ `pnpm install` trở đi. Các lệnh backup gắn commit/restore source cần Git checkout đúng phiên bản. Tag RC đã phát hành; lấy tag này để thử, vì `main` còn chờ chuỗi PR merge. Node được ghi trong `.nvmrc`, pnpm được cố định ở trường `packageManager` của `package.json`.
+Nếu dùng source archive, kiểm tra `SHA256SUMS` của release và giải nén vào thư mục mới nằm ngoài mọi Git checkout. Chạy `pnpm install --frozen-lockfile`, `pnpm demo:init`, `pnpm demo:up` và `pnpm demo:users`. Với archive không có Git metadata, kiểm tra `GET /api/health/ready` trả `ready` và `GET /api/config` có `sourceRevision` khớp tệp `SOURCE-REVISION`, version khớp release; sau đó thử UI theo user guide.
+
+Các bộ `demo:verify*`, `test:e2e`, `source:verify`, `security:audit`, `legal:audit`, backup/restore và đóng gói cần Git checkout đúng phiên bản để kiểm tra provenance. Clone tag theo các lệnh trên nếu cần chạy đầy đủ các bộ này; tệp `SOURCE-REVISION` trong archive không tự chứng minh cây source còn sạch. `pnpm test`, typecheck và build có thể chạy từ archive. `main` còn chờ chuỗi PR merge. Node được ghi trong `.nvmrc`, pnpm được cố định ở trường `packageManager` của `package.json`.
 
 Nếu dùng Codex MSIX trên Windows và có helper khởi động riêng, chạy helper trước công việc Docker:
 
