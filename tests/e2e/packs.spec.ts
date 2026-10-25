@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { readFileSync } from "node:fs";
 import { client } from "../../scripts/test-client.mjs";
 const env = Object.fromEntries(

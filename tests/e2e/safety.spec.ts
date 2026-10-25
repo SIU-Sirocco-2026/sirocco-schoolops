@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./fixtures.js";
 import { readFileSync } from "node:fs";
 const env = Object.fromEntries(
   readFileSync(".env", "utf8")
@@ -35,7 +35,9 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
 }) => {
   test.setTimeout(150000);
   const contexts = await Promise.all(
-      [1, 2, 3, 4].map(() => browser.newContext()),
+      [1, 2, 3, 4].map(() =>
+        browser.newContext({ viewport: { width: 390, height: 844 } }),
+      ),
     ),
     [r, s, a, outsider] = await Promise.all(contexts.map((c) => c.newPage()));
   const title = `Kiểm tra vật cản hành lang giả lập ${Date.now()}`;

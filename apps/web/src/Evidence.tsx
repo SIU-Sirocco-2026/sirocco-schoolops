@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ApiError } from "./http.js";
 
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 type FileEvidence = {
@@ -44,9 +45,13 @@ export function Evidence({
     [error, setError] = useState("");
   const key = useRef(crypto.randomUUID()),
     input = useRef<HTMLInputElement>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const mimeTypesKey = JSON.stringify(policy.mimeTypes);
   useEffect(() => {
     let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     async function poll() {
+      let delay = 30000;
       try {
         const data = await request<{
           items: FileEvidence[];
@@ -65,22 +70,28 @@ export function Evidence({
               (!policy.mimeTypes || policy.mimeTypes.includes(f.mime)),
           ).length >= policy.minClean,
         );
+        if (data.items.some((f) => ["pending", "error"].includes(f.scanStatus)))
+          delay = 4000;
       } catch (e) {
         if (active) {
           setFiles([]);
           setCanUpload(false);
           onReady(false);
           setError((e as Error).message);
+          if (e instanceof ApiError && [401, 403, 404].includes(e.status))
+            return;
+          delay =
+            e instanceof ApiError && e.status === 429 ? e.retryAfterMs : 10000;
         }
       }
+      if (active) timer = setTimeout(() => void poll(), delay);
     }
     void poll();
-    const timer = setInterval(() => void poll(), 4000);
     return () => {
       active = false;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
-  }, [caseId, taskId]);
+  }, [caseId, taskId, prefix, refreshIndex, policy.minClean, mimeTypesKey]);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
@@ -103,6 +114,7 @@ export function Evidence({
         `/api/${prefix}/cases/${caseId}/evidence`,
       );
       setFiles(data.items);
+      setRefreshIndex((n) => n + 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {

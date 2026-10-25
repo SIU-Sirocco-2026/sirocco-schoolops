@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./fixtures.js";
 import { readFileSync } from "node:fs";
 const env = Object.fromEntries(
   readFileSync(".env", "utf8")
@@ -90,7 +90,9 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
 }) => {
   test.setTimeout(120000);
   const contexts = await Promise.all(
-    Array.from({ length: 4 }, () => browser.newContext()),
+    Array.from({ length: 4 }, () =>
+      browser.newContext({ viewport: { width: 390, height: 844 } }),
+    ),
   );
   const [r, c, t, a] = (await Promise.all(
     contexts.map((ctx) => ctx.newPage()),
@@ -229,6 +231,7 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   await r.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await r.getByLabel("Trạng thái", { exact: true }).selectOption("closed");
   await expect(r.getByRole("button").filter({ hasText: title })).toBeVisible();
+  for (const page of [c, t, a]) await noOverflow(page);
   for (const ctx of contexts) await ctx.close();
 });
 
@@ -247,4 +250,57 @@ test("technical admin cannot see G01 content or create cases through the UI", as
   await expect(
     page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true }),
   ).toBeVisible();
+});
+
+test("mobile quota errors retain the form and require an explicit retry with the same creation key", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "reporter");
+  await page
+    .getByRole("button", { name: "Báo sự cố mới", exact: true })
+    .click();
+  const title = `Kiểm chứng quota giả lập ${Date.now()}`;
+  await page.getByLabel("Tiêu đề sự cố", { exact: true }).fill(title);
+  await page
+    .getByLabel("Mô tả sự cố", { exact: true })
+    .fill(
+      "Dữ liệu giả lập để kiểm tra thông báo quota và giữ lại nội dung biểu mẫu.",
+    );
+  const keys: string[] = [];
+  let attempts = 0;
+  await page.route("**/api/g01/cases", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    attempts++;
+    keys.push(route.request().headers()["idempotency-key"]!);
+    if (attempts === 1)
+      return route.fulfill({
+        status: 429,
+        headers: {
+          "Content-Type": "text/html",
+          "X-RateLimit-Reset": "1",
+          "X-Sirocco-Gateway": "APISIX",
+        },
+        body: "<html>gateway rejected</html>",
+      });
+    await route.continue();
+  });
+  await page
+    .getByRole("button", { name: "Gửi báo sự cố", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Có quá nhiều yêu cầu");
+  await expect(page.getByRole("alert")).toContainText("thử lại thao tác");
+  await expect(page.getByLabel("Tiêu đề sự cố", { exact: true })).toHaveValue(
+    title,
+  );
+  await noOverflow(page);
+  // Crossing the server's stated reset must not resubmit a form in the background.
+  await page.waitForTimeout(1200);
+  expect(attempts).toBe(1);
+  await page
+    .getByRole("button", { name: "Gửi báo sự cố", exact: true })
+    .click();
+  await expect(page.locator(".case-code")).toHaveText(/^G01-/);
+  expect(attempts).toBe(2);
+  expect(keys[1]).toBe(keys[0]);
 });

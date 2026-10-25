@@ -6,6 +6,7 @@ import { Safety } from "./Safety.js";
 import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
+import { decodeResponse } from "./http.js";
 
 type User = { id: string; username: string; name: string; roles: string[] };
 type Task = {
@@ -43,16 +44,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set("Authorization", `Bearer ${keycloak.token}`);
   if (init.body && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
-  const response = await fetch(path, { ...init, headers });
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error?.message || "Không thể tải dữ liệu.");
+  let response: Response;
+  try {
+    response = await fetch(path, { ...init, headers });
+  } catch {
+    throw new Error(
+      "Mất kết nối. Hãy làm mới hồ sơ để kiểm tra kết quả trước khi gửi lại thao tác.",
+    );
   }
-  return (
-    response.headers.get("content-type")?.includes("application/json")
-      ? await response.json()
-      : await response.blob()
-  ) as T;
+  return decodeResponse<T>(response);
 }
 function date(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {

@@ -1,0 +1,68 @@
+import { spawnSync } from "node:child_process";
+import { openSync, closeSync, existsSync, chmodSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+export const root = resolve(import.meta.dirname, "..");
+export const utilityImage = "node:22.16.0-alpine";
+export function run(command, args, options = {}) {
+  const fd = options.output ? openSync(options.output, "w", 0o600) : undefined;
+  try {
+    const r = spawnSync(command, args, {
+      cwd: options.cwd || root,
+      env: options.env || process.env,
+      input: options.input,
+      encoding: options.binary ? undefined : "utf8",
+      timeout: options.timeout || 600000,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: fd === undefined ? ["pipe", "pipe", "pipe"] : ["pipe", fd, "pipe"],
+    });
+    if (r.error || r.status !== 0)
+      throw new Error(
+        `${command} failed: ${r.error?.message || String(r.stderr).slice(-1500)}`,
+      );
+    return r.stdout;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+export function docker(args, options) {
+  return run("docker", args, options);
+}
+export function compose(args, options = {}) {
+  return docker(
+    ["compose", ...(options.project ? ["-p", options.project] : []), ...args],
+    options,
+  );
+}
+export function ensureDocker() {
+  const helper =
+    "C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1";
+  if (process.platform === "win32" && existsSync(helper))
+    run("powershell", ["-NoProfile", "-File", helper]);
+  docker(["info", "--format", "{{.ServerVersion}}"]);
+}
+export function privateDirectory(path) {
+  mkdirSync(path, { recursive: true, mode: 0o700 });
+  if (process.platform === "win32") {
+    const user = run("whoami", []).trim();
+    run("icacls", [path, "/inheritance:r", "/grant:r", `${user}:(OI)(CI)F`]);
+  } else chmodSync(path, 0o700);
+}
+export function sourceRevision() {
+  return run("git", ["rev-parse", "HEAD"]).trim();
+}
+export function runningServices(options = {}) {
+  return compose(["ps", "--services", "--status", "running"], options)
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean);
+}
+export function inspectVolume(service, target, options = {}) {
+  const id = compose(["ps", "-a", "-q", service], options).trim();
+  if (!id) throw new Error(`${service} container is missing`);
+  const info = JSON.parse(docker(["inspect", id]))[0];
+  const mount = info.Mounts.find(
+    (m) => m.Destination === target && m.Type === "volume",
+  );
+  if (!mount) throw new Error(`${service} persistent volume is missing`);
+  return mount.Name;
+}
