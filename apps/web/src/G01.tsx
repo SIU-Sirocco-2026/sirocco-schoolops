@@ -107,7 +107,7 @@ export function G01({
 }) {
   const basePath = `/api/${prefix}`;
   useEffect(() => {
-    if (initialCase) setSelected(initialCase);
+    if (initialCase) chooseCase(initialCase);
   }, [initialCase]);
   const [bucket, setBucket] = useState("all"),
     [evidenceReady, setEvidenceReady] = useState(false);
@@ -136,6 +136,24 @@ export function G01({
     [notice, setNotice] = useState("");
   const generation = useRef(0),
     detailGeneration = useRef(0);
+  const listPanel = useRef<HTMLElement | null>(null),
+    detailPanel = useRef<HTMLElement | null>(null),
+    scrollRequested = useRef(false);
+  function showDetail() {
+    if (window.matchMedia("(max-width: 1100px)").matches)
+      detailPanel.current?.scrollIntoView({ block: "start" });
+  }
+  function chooseCase(id: string) {
+    if (detail?.item.id === id) showDetail();
+    else scrollRequested.current = true;
+    setSelected(id);
+  }
+  useEffect(() => {
+    if (scrollRequested.current && detail?.item.id === selected) {
+      scrollRequested.current = false;
+      showDetail();
+    }
+  }, [selected, detail?.item.id]);
   async function loadList() {
     const n = ++generation.current;
     const params = new URLSearchParams({
@@ -221,7 +239,7 @@ export function G01({
           body: JSON.stringify({ ...form, assetId: form.assetId || null }),
         },
       );
-      setSelected(data.item.id);
+      chooseCase(data.item.id);
       setKey(crypto.randomUUID());
       setForm(initial);
       setShowCreate(false);
@@ -413,7 +431,7 @@ export function G01({
         </button>
       </form>
       <div className="work-grid g01-grid">
-        <section className="panel">
+        <section className="panel" ref={listPanel}>
           <div className="section-heading">
             <h2>
               Danh sách hồ sơ <span className="muted-count">{total}</span>
@@ -437,7 +455,7 @@ export function G01({
                 <li key={c.id}>
                   <button
                     className={`task-row ${selected === c.id ? "selected" : ""}`}
-                    onClick={() => setSelected(c.id)}
+                    onClick={() => chooseCase(c.id)}
                   >
                     <span className="task-copy">
                       <small>
@@ -485,9 +503,21 @@ export function G01({
             </div>
           )}
         </section>
-        <section className="panel">
+        <section className="panel" ref={detailPanel}>
           <div className="section-heading">
             <h2>Chi tiết hồ sơ</h2>
+            {detail && (
+              <button
+                type="button"
+                className="button secondary case-list-return"
+                aria-label="Về danh sách hồ sơ"
+                onClick={() =>
+                  listPanel.current?.scrollIntoView({ block: "start" })
+                }
+              >
+                Về danh sách
+              </button>
+            )}
           </div>
           {!detail ? (
             <p className="detail-empty">

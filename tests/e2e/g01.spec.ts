@@ -28,6 +28,13 @@ async function open(page: Page, title: string) {
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await page.getByRole("button").filter({ hasText: title }).click();
   await expect(page.locator(".case-detail h3").first()).toHaveText(title);
+  if ((page.viewportSize()?.width || 0) <= 1100)
+    await expect
+      .poll(
+        async () =>
+          (await page.locator(".case-detail").boundingBox())?.y ?? 9999,
+      )
+      .toBeLessThan(150);
 }
 async function state(page: Page, label: string) {
   await expect(page.locator(".case-detail > .status")).toHaveText(label);

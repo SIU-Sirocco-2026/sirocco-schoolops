@@ -766,6 +766,14 @@ h3 {
   }
 }
 /* G01 extends the established SchoolOps workspace. */
+.case-list-return {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .case-list-return {
+    display: inline-flex;
+  }
+}
 .sidebar .nav-item {
   width: 100%;
   color: inherit;
