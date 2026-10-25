@@ -5,6 +5,7 @@ import {
   mkdtemp,
   copyFile,
   stat,
+  chmod,
 } from "node:fs/promises";
 import { resolve, dirname, join, basename } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -37,6 +38,32 @@ const payloadFiles = [
 ];
 const passphrase = process.env.SIROCCO_BACKUP_PASSPHRASE;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export async function restoreConfiguration(data, target, project) {
+  const generated = join(target, "infra/generated");
+  await mkdir(generated, { recursive: true, mode: 0o700 });
+  await chmod(generated, 0o700);
+  for (const [from, to] of [
+    [".env", ".env"],
+    ["realm.json", "infra/generated/realm.json"],
+    ["s3.json", "infra/generated/s3.json"],
+  ])
+    await copyFile(join(data, from), join(target, to));
+  const restoredEnv = (await readFile(join(target, ".env"), "utf8"))
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith("COMPOSE_PROJECT_NAME="))
+    .join("\n")
+    .trimEnd();
+  await writeFile(
+    join(target, ".env"),
+    `${restoredEnv}\nCOMPOSE_PROJECT_NAME=${project}\n`,
+    { mode: 0o600 },
+  );
+  await chmod(join(target, ".env"), 0o600);
+  // File mounts must be readable by the container UID. Private parent
+  // directories prevent other host users traversing to these secret files.
+  for (const name of ["realm.json", "s3.json"])
+    await chmod(join(generated, name), 0o644);
+}
 function option(name) {
   const i = process.argv.indexOf(name);
   return i < 0 ? undefined : process.argv[i + 1];
@@ -345,26 +372,7 @@ export async function restore(input, target, project, password = passphrase) {
       manifest.source,
     ]);
     run("git", ["-C", target, "reset", "--mixed", manifest.source]);
-    await mkdir(join(target, "infra/generated"), {
-      recursive: true,
-      mode: 0o700,
-    });
-    for (const [from, to] of [
-      [".env", ".env"],
-      ["realm.json", "infra/generated/realm.json"],
-      ["s3.json", "infra/generated/s3.json"],
-    ])
-      await copyFile(join(data, from), join(target, to));
-    const restoredEnv = (await readFile(join(target, ".env"), "utf8"))
-      .split(/\r?\n/)
-      .filter((line) => !line.startsWith("COMPOSE_PROJECT_NAME="))
-      .join("\n")
-      .trimEnd();
-    await writeFile(
-      join(target, ".env"),
-      `${restoredEnv}\nCOMPOSE_PROJECT_NAME=${project}\n`,
-      { mode: 0o600 },
-    );
+    await restoreConfiguration(data, target, project);
     const options = {
       cwd: target,
       project,

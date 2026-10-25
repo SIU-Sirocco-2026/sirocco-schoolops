@@ -30,6 +30,8 @@ Target directory phải chưa tồn tại; project chưa có container/volume. C
 
 Workspace được khôi phục có Git object store riêng cho đúng commit, không phụ thuộc vào việc giữ checkout nguồn. `.env` chỉ đổi/thêm `COMPOSE_PROJECT_NAME` sang project đích, giữ credential/Identity/S3; vì vậy lệnh vận hành sau đó trong thư mục này mặc định trỏ đúng project restore. Có thể tạo backup tiếp bằng cùng hướng dẫn, không phải tự dựng lại Git metadata. Khi nâng cấp qua mạng, thêm upstream remote đúng repo và fetch tag/commit muốn dùng; không giả rằng snapshot shallow này đã có toàn bộ lịch sử.
 
+Trên POSIX, `.env` giữ mode `0600`, thư mục generated `0700`; riêng `realm.json` và `s3.json` là `0644` để UID trong container đọc được file mount chỉ đọc. Thư mục cha riêng tư chặn user khác trên host đọc các file này. Kiểm thử Linux xác nhận cả quyền file lẫn việc Identity đăng nhập được sau restore; không suy ra quyền POSIX từ hành vi file mount của Docker Desktop Windows.
+
 Đánh giá sau restore: đăng nhập mới, tải bằng chứng qua API và so SHA-256, tiếp tục workflow đang xử lý, gửi lại cùng idempotency key, thử account G01/admin với ID G03, xem lineage G02 và đối soát báo cáo. Các bước này được tự động hóa bằng:
 
 ```powershell
