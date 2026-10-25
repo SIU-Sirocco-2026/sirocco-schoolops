@@ -1,0 +1,10 @@
+{
+  "@nodable/entities@2.2.0": {
+    "license": "MIT",
+    "repository": "git+https://github.com/nodable/val-parsers.git",
+    "sourceUrl": "https://raw.githubusercontent.com/nodable/val-parsers/1a2c08a483b5b6428f1b3d01974875c97f3b3953/LICENSE",
+    "file": "third-party/licenses/nodable-entities-2.2.0.txt",
+    "sha256": "750cb3fb6362804957ef52caaf9b5c824015be44d494637330d7cd8834d31d40",
+    "reason": "The npm 2.2.0 archive declares MIT but omits the root LICENSE; text retrieved at its registry gitHead."
+  }
+}

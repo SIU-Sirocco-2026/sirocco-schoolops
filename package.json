@@ -7,6 +7,7 @@
     "node": ">=22.16.0"
   },
   "scripts": {
+    "security:audit": "node scripts/audit-dependencies.mjs",
     "dev": "pnpm --filter @sirocco/web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",

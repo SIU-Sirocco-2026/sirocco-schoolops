@@ -1,0 +1,78 @@
+{
+  "sourceRevision": "84f2ecfe31ff12b0d4cb3cd09899e37f14975e55",
+  "version": "0.1.0-rc.1",
+  "synthetic": true,
+  "automated": true,
+  "userAcceptance": "pending",
+  "code": "G01-000138",
+  "scenes": [
+    {
+      "label": "1. Người báo tạo sự cố máy chiếu A101",
+      "screenshot": "01-reporter.png",
+      "secondsFromStart": 2
+    },
+    {
+      "label": "2. Một mã hồ sơ xuyên suốt: G01-000138",
+      "screenshot": "02-created.png",
+      "secondsFromStart": 14
+    },
+    {
+      "label": "3. Điều phối giao người xử lý, người nghiệm thu và hạn",
+      "screenshot": "03-coordinator.png",
+      "secondsFromStart": 26
+    },
+    {
+      "label": "4. Kỹ thuật viên ghi kết quả; thiếu bằng chứng chưa được gửi",
+      "screenshot": "04-technician.png",
+      "secondsFromStart": 39
+    },
+    {
+      "label": "5. Tệp được quét sạch rồi mới gửi nghiệm thu",
+      "screenshot": "05-evidence.png",
+      "secondsFromStart": 56
+    },
+    {
+      "label": "6. Người nghiệm thu kiểm tra đúng hồ sơ và bằng chứng",
+      "screenshot": "06-approver.png",
+      "secondsFromStart": 69
+    },
+    {
+      "label": "7. Hồ sơ đã đóng; timeline giữ các bước theo vai trò",
+      "screenshot": "07-closed.png",
+      "secondsFromStart": 81
+    },
+    {
+      "label": "8. Người báo đọc kết quả trên cùng mã; báo cáo mở danh sách nguồn",
+      "screenshot": "08-report.png",
+      "secondsFromStart": 95
+    },
+    {
+      "label": "RC chờ người dùng mục tiêu xác nhận. Đây là demo tự động.",
+      "screenshot": "10-status.png",
+      "secondsFromStart": 107
+    }
+  ],
+  "capturedAt": "2026-10-25T10:23:15.987Z",
+  "elapsedSeconds": 157,
+  "video": {
+    "file": "schoolops-g01-rc1.mp4",
+    "durationSeconds": 124.0,
+    "encoding": "H.264, no audio",
+    "edit": "First 106 seconds of captured WebM followed by 18-second hold of the actual final desktop screenshot. Viewport-resize recording omitted; mobile screenshot provided separately."
+  },
+  "architecture": {
+    "renderer": "Mermaid 12.0.0",
+    "source": "../ARCHITECTURE.md",
+    "file": "architecture.svg"
+  },
+  "files": {
+    "01-reporter.png": "07d224f9dfb0290190fa59b5aa6eb5b8a1b949f3774b36cb8b35397ecf901176",
+    "03-coordinator.png": "448d557a69459661e7e5ee5165a41de21ec108254dc0e976bdde471f36c8a543",
+    "05-evidence.png": "5d01bfebf18b068a8c95230fdf904af72bdf10cba26fd3b7c4fbe84a2aaa1aa8",
+    "08-report.png": "0ea35a460b0ce340543d64d508b5980652b77e376a698d3eecf4ebefd06e773c",
+    "09-mobile.png": "2f9de4d5c5d83160c6f5a6c7c3175c67c8d218ce6a4a7d0d531c644f8c41a7fb",
+    "10-status.png": "0d72fe6e3dd1026ab8e81e6d868aa8c8cfb404c7a9ebb0aefe58601d718cbe96",
+    "architecture.svg": "4dd48ddf36f8d0e3ddcd74b1f67ce98e57faab8e22f4b1f8629e9867bca09c29",
+    "schoolops-g01-rc1.mp4": "47c5263f76208c1fb536cfa490c99b9bb91bb25b038c7c0767f395463b3462b0"
+  }
+}

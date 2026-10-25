@@ -7,7 +7,7 @@ Giai đoạn này hoàn thành luồng nghiệp vụ cơ bản theo `ROADMAP-CHU
 ## Khởi động và thử ngay
 
 ```powershell
-cd D:\Project\sirocco-schoolops
+cd sirocco-schoolops
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up

@@ -21,6 +21,7 @@ jobs:
           node-version: "22.16.0"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm security:audit
       - run: pnpm typecheck && pnpm test && pnpm build
       - run: pnpm source:verify
       - run: pnpm demo:init

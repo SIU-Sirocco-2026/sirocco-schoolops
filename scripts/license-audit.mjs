@@ -26,6 +26,9 @@ const entries = Object.entries(grouped).flatMap(([license, items]) =>
 const parent = new Map(entries.map((e) => [e.item.name, e]));
 const components = [],
   notices = [];
+const pinnedNotices = JSON.parse(
+  await readFile(join(root, "third-party/license-sources.json"), "utf8"),
+);
 for (const entry of entries) {
   const meta = JSON.parse(
     await readFile(join(entry.path, "package.json"), "utf8"),
@@ -46,6 +49,20 @@ for (const entry of entries) {
     const index = readme.search(/^## license\s*$/im);
     if (index < 0) throw new Error(`Missing license text for ${meta.name}`);
     texts.push({ name: "README.md#license", text: readme.slice(index) });
+  }
+  const pinned = pinnedNotices[`${meta.name}@${meta.version}`];
+  if (!texts.length && pinned) {
+    const repository =
+      typeof meta.repository === "string"
+        ? meta.repository
+        : meta.repository?.url;
+    if (entry.license !== pinned.license || repository !== pinned.repository)
+      throw new Error(`Pinned notice metadata differs: ${meta.name}`);
+    const text = await readFile(join(root, pinned.file), "utf8");
+    if (createHash("sha256").update(text).digest("hex") !== pinned.sha256)
+      throw new Error(`Pinned notice checksum differs: ${meta.name}`);
+    texts.push({ name: pinned.file, text });
+    origin = `pinned upstream license: ${pinned.sourceUrl}; ${pinned.reason}`;
   }
   if (!texts.length) {
     const family = meta.name.startsWith("@aws-sdk/")

@@ -2,6 +2,30 @@
 
 Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp vụ, minh họa bằng SchoolOps trong vận hành trường học. Dự án của đội SIU Sirocco, Olympic Phần mềm nguồn mở 2026.
 
+## Tải đúng bản để thử
+
+[Bản thử v0.1.0-rc.1](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.1) nằm ở tag; chuỗi PR chưa merge vào `main`. Bản RC sẵn sàng cho đánh giá nội bộ, còn chờ người dùng mục tiêu xác nhận.
+
+```powershell
+git clone --branch v0.1.0-rc.1 --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+cd sirocco-schoolops
+pnpm install --frozen-lockfile
+pnpm demo:init
+pnpm demo:up
+pnpm demo:users
+pnpm demo:verify
+```
+
+Cần Git, Node 22.16.0, pnpm 11.25.0 và Docker chạy Linux containers. Mở `http://localhost:8088`; mật khẩu demo là `DEMO_PASSWORD` trong `.env` trên máy chạy. Đọc [cài đặt](docs/INSTALL.md) trước khi nâng cấp bản đã có dữ liệu. Trên nhánh tài liệu mới, các hướng dẫn đánh giá có thể mới hơn bản RC; kết quả của RC chỉ chứng minh commit được ghi trong release.
+
+## Bài toán và người sử dụng
+
+SchoolOps hướng tới việc phối hợp giữa người báo, người điều phối, người xử lý và người nghiệm thu trong một trường. Tình huống mẫu là máy chiếu A101 hỏng: cần biết ai đang giữ việc, hạn nào phải xong, bằng chứng nào đã được quét sạch và ai đã nghiệm thu. Hiện chưa có trường triển khai thử hoặc số liệu khảo sát đủ để khẳng định hiệu quả hay quy mô phục vụ thực tế.
+
+G01 xử lý sự cố cơ sở vật chất; G02 chuyển đợt cảnh báo PM2.5 replay thành công việc có nguồn gốc số đo; G03 giới hạn người đọc từng hồ sơ và tệp. Ba gói dùng chung nền tảng hồ sơ, task và bằng chứng. Đội đóng góp lớp tích hợp, gói nghiệp vụ, API/UI và cơ chế đối soát; Keycloak, Flowable, APISIX, PostgreSQL, SeaweedFS và ClamAV giữ vai trò của các thành phần nguồn mở được tích hợp.
+
+Xem [giới thiệu và đối chiếu giải pháp](docs/PROJECT-OVERVIEW.md), [kiến trúc](docs/ARCHITECTURE.md), [ảnh và kịch bản demo](docs/DEMO-MEDIA.md). Để thử việc bàn giao cùng hồ sơ giữa nhiều người, dùng [một môi trường chung](docs/SHARED-EVALUATION.md); không chia mỗi bước của một hồ sơ sang các bản cài có database riêng.
+
 ## Trạng thái
 
 Bản ứng viên **0.1.0-rc.1** có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát. Giai đoạn 7 bổ sung công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. Mã nằm trên chuỗi PR chờ review/merge; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
@@ -50,22 +74,24 @@ packs/       Gói nghiệp vụ G01/G02/G03
 docs/        Kiến trúc, API và hướng dẫn
 ```
 
-`demo:verify:phase3` chủ động dừng/khởi động engine/scanner/worker để thử lỗi: chỉ chạy trên stack demo riêng, tuần tự với các phép kiểm tra khác. Trên máy Windows MSIX này, dùng helper `C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1` trước khi làm việc với Docker; xem chi tiết trong hướng dẫn giai đoạn 3.
+`demo:verify:phase3` chủ động dừng/khởi động engine/scanner/worker để thử lỗi: chỉ chạy trên stack demo kỹ thuật riêng, tuần tự với các phép kiểm tra khác. Không chạy bài gây lỗi hoặc restore trên môi trường chung khi người khác đang thử. Xem [cài đặt](docs/INSTALL.md) cho lưu ý Windows MSIX.
 
-## Các mốc dự kiến
+## Lộ trình
 
-| Mốc        | Đầu ra                                                              |
-| ---------- | ------------------------------------------------------------------- |
-| 29/10/2026 | Bản tích hợp lõi: đăng nhập → tạo hồ sơ → sinh và hoàn tất nhiệm vụ |
-| 08/11/2026 | G01 hoàn chỉnh và bản alpha                                         |
-| 15/11/2026 | Kiểm chứng gói v1/v2 và luồng G02                                   |
-| 22/11/2026 | Demo ba gói SchoolOps                                               |
-| 29/11/2026 | Kiểm thử cài từ source, backup/restore và lỗi tích hợp              |
-| 03/12/2026 | Bản phát hành dự thi và tài liệu demo                               |
+| Mốc                       | Đầu ra                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| Đã có trong RC 25/10/2026 | Nền tảng, G01/G02/G03, v1/v2, backup/restore, nguồn/giấy phép và bằng chứng tự động      |
+| Chờ người thực hiện       | Review mã độc lập, thử trong đội trên một môi trường chung, phản hồi người dùng mục tiêu |
+| Đề xuất tiếp theo         | Image dựng sẵn, macOS/arm64, a11y, tải/hiệu năng và đánh giá bảo mật có phạm vi riêng    |
+| Mục tiêu trước hạn nộp    | Đối chiếu thể lệ hiện hành, khép lỗi chặn luồng, chốt bằng chứng và bản phát hành dự thi |
+
+Ngày trong kế hoạch ban đầu không phải ngày xác nhận hoàn thành. Xem [phạm vi bằng chứng](docs/verification/EVIDENCE.md) và [kế hoạch thử người dùng](docs/verification/USER-STUDY.md) để biết phần đã đo và phần chưa có dữ liệu.
 
 ## Cộng tác
 
 Quy trình thống nhất ở [CONTRIBUTING.md](CONTRIBUTING.md): Issue → nhánh chức năng → commit tiếng Việt nêu rõ thay đổi → PR → CI/review → merge giữ các commit có ý nghĩa. Xem [bảng đối chiếu lịch sử đã tách](docs/LICH-SU-TACH-COMMIT.md) cho các thay đổi nền tảng và G01.
+
+Tham gia theo [quy tắc ứng xử](CODE_OF_CONDUCT.md); báo lỗ hổng theo [SECURITY](SECURITY.md). Bản RC chưa có xác nhận review mã độc lập; người trong đội cần đọc diff, ghi nhận xét và thử lại trước khi merge chuỗi PR.
 
 Theo dõi công việc và báo lỗi bằng GitHub Issues. Mỗi việc cần có đầu ra kiểm chứng được, người phụ trách và người review. Phân công cụ thể được đội xác nhận khi khởi động.
 

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { openSync, closeSync, existsSync, chmodSync, mkdirSync } from "node:fs";
-import { resolve, dirname, basename } from "node:path";
+import { resolve, dirname, basename, join } from "node:path";
+import { homedir } from "node:os";
 import { realpath, lstat, rm } from "node:fs/promises";
 export const root = resolve(import.meta.dirname, "..");
 export const utilityImage =
@@ -36,8 +37,12 @@ export function compose(args, options = {}) {
   );
 }
 export function ensureDocker() {
-  const helper =
-    "C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1";
+  const helper = join(
+    process.env.CODEX_HOME || join(homedir(), ".codex"),
+    "tools",
+    "windows-docker",
+    "ensure-docker.ps1",
+  );
   if (process.platform === "win32" && existsSync(helper))
     run("powershell", ["-NoProfile", "-File", helper]);
   docker(["info", "--format", "{{.ServerVersion}}"]);

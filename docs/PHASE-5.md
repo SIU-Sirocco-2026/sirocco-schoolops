@@ -12,7 +12,7 @@ pnpm demo:replay:g02
 pnpm demo:verify:phase5
 ```
 
-Trên Windows MSIX này dùng helper `C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1` trước Docker như các giai đoạn trước. `demo:users` chỉ thêm các tài khoản demo mới vào realm đang có; không xóa volume/reimport realm/reset tài khoản cũ. Keycloak REST có thể tự cấp subject ID khác ID import; script liên kết subject/issuer một cách tường minh vào membership demo. API không cấp quyền dựa vào preferred_username.
+Trên Windows MSIX có helper khởi động, dùng helper theo [INSTALL](INSTALL.md) trước công việc Docker. `demo:users` chỉ thêm các tài khoản demo mới vào realm đang có; không xóa volume/reimport realm/reset tài khoản cũ. Keycloak REST có thể tự cấp subject ID khác ID import; script liên kết subject/issuer một cách tường minh vào membership demo. API không cấp quyền dựa vào preferred_username.
 
 Hai tài khoản mới dùng mật khẩu demo trong `.env`:
 

@@ -12,6 +12,16 @@ for (const name of files)
     ),
     `Private/generated file tracked: ${name}`,
   );
+for (const name of files.filter((f) =>
+  /\.(md|mjs|[cm]?ts|tsx|ya?ml)$/.test(f),
+)) {
+  const text = await readFile(join(root, name), "utf8");
+  assert.ok(
+    !/[A-Z]:[\\/]Users[\\/][^\s/\\]+/i.test(text),
+    `Personal Windows profile path in published source: ${name}`,
+  );
+}
+assert.equal((await readFile(join(root, ".nvmrc"), "utf8")).trim(), "22.16.0");
 for (const path of ["apps/api/package.json", "apps/web/package.json"]) {
   const p = JSON.parse(await readFile(join(root, path), "utf8"));
   assert.equal(p.version, pkg.version);

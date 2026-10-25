@@ -7,8 +7,9 @@ Giai đoạn này bổ sung bằng chứng sạch, hàng đợi lệnh bền v�
 Trên Windows của dự án này, chạy helper ngoài repo trước khi làm việc với Docker:
 
 ```powershell
-& 'C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1'
-cd D:\Project\sirocco-schoolops
+$codexProfile = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+& (Join-Path $codexProfile 'tools/windows-docker/ensure-docker.ps1')
+cd sirocco-schoolops
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up

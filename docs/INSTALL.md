@@ -15,15 +15,18 @@ pnpm demo:users
 pnpm demo:verify
 ```
 
-Nếu dùng source archive, kiểm tra `SHA256SUMS` của release, giải nén vào thư mục mới rồi chạy các lệnh từ `pnpm install` trở đi. Các lệnh backup gắn commit/restore source cần Git checkout đúng phiên bản. Trước khi tag tồn tại, lấy đúng nhánh/SHA được ghi trong PR nghiệm thu; không dùng `main` còn chờ chuỗi PR merge để đánh giá bản ứng viên.
+Nếu dùng source archive, kiểm tra `SHA256SUMS` của release, giải nén vào thư mục mới rồi chạy các lệnh từ `pnpm install` trở đi. Các lệnh backup gắn commit/restore source cần Git checkout đúng phiên bản. Tag RC đã phát hành; lấy tag này để thử, vì `main` còn chờ chuỗi PR merge. Node được ghi trong `.nvmrc`, pnpm được cố định ở trường `packageManager` của `package.json`.
 
-Riêng máy Windows MSIX của dự án, trước công việc Docker chạy:
+Nếu dùng Codex MSIX trên Windows và có helper khởi động riêng, chạy helper trước công việc Docker:
 
 ```powershell
-& 'C:/Users/Thai Ho Phu Gia/.codex/tools/windows-docker/ensure-docker.ps1'
+$codexProfile = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+& (Join-Path $codexProfile 'tools/windows-docker/ensure-docker.ps1')
 ```
 
 Trên máy khác, mở Docker theo cách thông thường của máy đó. Không chạy Docker Desktop trực tiếp từ shell MSIX của agent; không xóa volume/WSL để xử lý lỗi khởi động.
+
+Windows/WSL2 và Ubuntu amd64 là các môi trường đã kiểm chứng. macOS và arm64 chưa được kiểm chứng; chưa có kết luận rằng chúng không được hỗ trợ. Image dựng sẵn GHCR và triển khai production chưa nằm trong bản RC. [Thử trên môi trường dùng chung](SHARED-EVALUATION.md) dùng một stack và một database cho toàn bộ các vai trò.
 
 Mở [SchoolOps](http://localhost:8088). Identity ở `http://localhost:8180`. Hai cổng chỉ bind loopback. `.env` và `infra/generated/` chứa secret local, được sinh mới và bị ignore; đọc `DEMO_PASSWORD` tại máy để đăng nhập, không gửi giá trị lên Issue/chat. `demo:init` giữ secret đã có; `demo:users` thêm/bind các tài khoản demo cần thiết, không đặt lại mật khẩu realm đang dùng. Không trộn `.env` mới với volume cũ.
 

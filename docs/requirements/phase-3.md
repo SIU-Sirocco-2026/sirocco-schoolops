@@ -1,6 +1,6 @@
 # Phạm vi giai đoạn 3 đã thống nhất
 
-Trích nguyên mục giai đoạn 3 từ roadmap chức năng Sirocco SchoolOps ngày 24/10/2026, lưu trong repo để reviewer có thể đối chiếu mà không cần thư mục tài liệu riêng. Nguồn local ban đầu: `D:/Project/olp-nguonmo/output/ROADMAP-CHUC-NANG-SIROCCO-SCHOOLOPS.md`.
+Trích nguyên mục giai đoạn 3 từ roadmap chức năng Sirocco SchoolOps ngày 24/10/2026, lưu trong repo để reviewer có thể đối chiếu mà không cần thư mục tài liệu riêng. Nguồn ban đầu là hồ sơ kế hoạch nội bộ của đội; phần yêu cầu được giữ dưới đây.
 
 ## Giai đoạn 3 — Hồ sơ có bằng chứng và xử lý lỗi đáng tin cậy
 
