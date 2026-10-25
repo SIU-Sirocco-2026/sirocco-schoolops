@@ -5,6 +5,14 @@ import { readPack, validatePack, canonical } from "../src/packs.js";
 const pack = await readPack(
   fileURLToPath(new URL("../../../packs/g01/v1", import.meta.url)),
 );
+
+test("canonical package keys use locale-independent ordering across installations", () => {
+  assert.equal(canonical({ á: 3, a: 2, Z: 1 }), '{"Z":1,"a":2,"á":3}');
+  assert.equal(
+    canonical({ nested: { z: 1, A: 2 }, list: [3, 2, 1] }),
+    '{"list":[3,2,1],"nested":{"A":2,"z":1}}',
+  );
+});
 test("complete G01 v1/v2 bundles pass schema, seed, role/action and supported BPMN graph validation", async () => {
   assert.equal((await validatePack(pack)).valid, true);
   const v2 = await readPack(

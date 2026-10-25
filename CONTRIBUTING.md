@@ -73,4 +73,4 @@ Merge sau khi các kiểm tra liên quan đạt và phản hồi review được
 - Không tạo số lượng Issue/PR/commit giả để làm đẹp hồ sơ thi. Lịch sử SCM là bằng chứng công việc, không phải chỉ tiêu số lượng.
 - Giữ nguồn/tác giả/thông báo giấy phép khi dùng mã bên ngoài. Không commit `.env`, token, mật khẩu, file sinh hoặc dữ liệu cá nhân thật.
 
-Giấy phép cho mã mới của dự án hiện còn chờ chốt sau rà soát phụ thuộc và mã kế thừa; hướng dẫn này không thay thế LICENSE hoặc tuyên bố dự án đã hoàn tất mọi tiêu chí phát hành nguồn mở. Xem mục nguồn gốc/giấy phép trong README.
+Mã mới dùng Apache-2.0; xem LICENSE, NOTICE, THIRD_PARTY_NOTICES.md và docs/PROVENANCE.md. Đóng góp cần có quyền phân phối theo giấy phép này, giữ thông báo nguồn của phần kế thừa. Trước phát hành chạy thêm pnpm legal:audit, bộ restore giai đoạn 7 và checklist phản hồi theo vai trò; không dùng kiểm thử tự động thay approval/nhận xét của người thật.

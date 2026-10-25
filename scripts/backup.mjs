@@ -82,28 +82,34 @@ export function databaseInventory(options = {}) {
         options,
       ),
     );
-    result[database] = {};
-    for (const table of tables) {
+    const queries = tables.map((table) => {
       const identifier = '"' + table.replaceAll('"', '""') + '"';
-      const sql = `SELECT json_build_object('rows',count(*),'sha256',encode(sha256(convert_to(coalesce(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY to_jsonb(t)::text),''),'UTF8')),'hex')) FROM public.${identifier} t`;
-      result[database][table] = JSON.parse(
-        compose(
-          [
-            "exec",
-            "-T",
-            "postgres",
-            "psql",
-            "-U",
-            "postgres",
-            "-d",
-            database,
-            "-tAc",
-            sql,
-          ],
-          options,
-        ),
-      );
-    }
+      const literal = "'" + table.replaceAll("'", "''") + "'";
+      return `SELECT ${literal} AS name,json_build_object('rows',count(*),'sha256',encode(sha256(convert_to(coalesce(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY to_jsonb(t)::text),''),'UTF8')),'hex')) AS stats FROM public.${identifier} t`;
+    });
+    result[database] = tables.length
+      ? JSON.parse(
+          compose(
+            [
+              "exec",
+              "-T",
+              "postgres",
+              "psql",
+              "-U",
+              "postgres",
+              "-d",
+              database,
+              "-v",
+              "ON_ERROR_STOP=1",
+              "-tA",
+            ],
+            {
+              ...options,
+              input: `SELECT json_object_agg(name,stats ORDER BY name) FROM (${queries.join(" UNION ALL ")}) inventory;`,
+            },
+          ),
+        )
+      : {};
   }
   return result;
 }
@@ -355,7 +361,7 @@ export async function restore(input, target, project, password = passphrase) {
       throw new Error(
         "Restored database fingerprint differs from the snapshot",
       );
-    compose(["create", "--no-deps", "seaweedfs"], options);
+    compose(["up", "--no-start", "--no-deps", "seaweedfs"], options);
     const volume = inspectVolume("seaweedfs", "/data", options);
     docker(
       [

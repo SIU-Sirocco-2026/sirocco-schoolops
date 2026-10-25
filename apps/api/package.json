@@ -1,6 +1,6 @@
 {
   "name": "@sirocco/api",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,5 +23,6 @@
     "@types/node": "22.18.6",
     "@types/pg": "8.15.5",
     "tsx": "4.20.6"
-  }
+  },
+  "license": "Apache-2.0"
 }

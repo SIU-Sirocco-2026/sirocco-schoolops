@@ -1,0 +1,10 @@
+Sirocco Core + SchoolOps
+Copyright 2026 Sirocco SchoolOps contributors.
+
+The project's original source and documentation are licensed under Apache-2.0.
+Third-party packages, tools and services retain their own copyrights and licenses.
+See THIRD_PARTY_NOTICES.md, docs/PROVENANCE.md and the release's generated
+dependency-inventory.json, sbom.cdx.json and THIRD_PARTY_NOTICES.txt.
+
+SchoolOps is an independent integration of the components it uses. References
+to upstream names do not imply endorsement by their authors or foundations.

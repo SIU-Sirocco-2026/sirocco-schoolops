@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler } from "express";
 import { randomUUID, createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import type pg from "pg";
 import {
@@ -47,6 +48,9 @@ const createInput = z
   .object({ title: z.string().trim().min(5).max(160) })
   .strict();
 const uuid = z.uuid();
+const applicationVersion = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).version as string;
 export function createApp(options: Options) {
   const app = express();
   app.disable("x-powered-by");
@@ -78,7 +82,8 @@ export function createApp(options: Options) {
         realm: "sirocco",
         clientId: "schoolops-web",
       },
-      phase: 6,
+      phase: 7,
+      version: applicationVersion,
     }),
   );
   app.use("/api", async (req, res, next) => {
