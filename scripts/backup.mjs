@@ -3,7 +3,6 @@ import {
   writeFile,
   mkdir,
   mkdtemp,
-  rm,
   copyFile,
   stat,
 } from "node:fs/promises";
@@ -21,6 +20,7 @@ import {
   runningServices,
   inspectVolume,
   utilityImage,
+  removeOwnedDirectory,
 } from "./ops-lib.mjs";
 import { encrypt, decrypt, sha256 } from "./backup-crypto.mjs";
 
@@ -263,7 +263,7 @@ export async function backup(output, password = passphrase) {
     try {
       if (stopped) await resume(writers);
     } finally {
-      await rm(work, { recursive: true, force: true });
+      await removeOwnedDirectory(work, join(root, ".local"), "backup-work-");
     }
   }
 }
@@ -332,6 +332,19 @@ export async function restore(input, target, project, password = passphrase) {
       output: sourceTar,
     });
     run("tar", ["-xf", sourceTar, "-C", target]);
+    // Keep an independent Git object store, so the restored installation can
+    // itself create versioned backups without depending on the source checkout.
+    run("git", ["init", target]);
+    run("git", [
+      "-C",
+      target,
+      "fetch",
+      "--no-tags",
+      "--depth=1",
+      root,
+      manifest.source,
+    ]);
+    run("git", ["-C", target, "reset", "--mixed", manifest.source]);
     await mkdir(join(target, "infra/generated"), {
       recursive: true,
       mode: 0o700,
@@ -342,6 +355,16 @@ export async function restore(input, target, project, password = passphrase) {
       ["s3.json", "infra/generated/s3.json"],
     ])
       await copyFile(join(data, from), join(target, to));
+    const restoredEnv = (await readFile(join(target, ".env"), "utf8"))
+      .split(/\r?\n/)
+      .filter((line) => !line.startsWith("COMPOSE_PROJECT_NAME="))
+      .join("\n")
+      .trimEnd();
+    await writeFile(
+      join(target, ".env"),
+      `${restoredEnv}\nCOMPOSE_PROJECT_NAME=${project}\n`,
+      { mode: 0o600 },
+    );
     const options = {
       cwd: target,
       project,
@@ -404,26 +427,25 @@ export async function restore(input, target, project, password = passphrase) {
     );
     if (!isDeepStrictEqual(fileInventory(volume), manifest.files))
       throw new Error("Restored file checksums differ from the snapshot");
+    const report = {
+      restoredAt: new Date().toISOString(),
+      source: manifest.source,
+      version: manifest.version,
+      databaseFingerprintsMatch: true,
+      fileChecksumsMatch: true,
+      tables: Object.fromEntries(
+        Object.entries(actual).map(([db, tables]) => [
+          db,
+          Object.keys(tables).length,
+        ]),
+      ),
+      files: manifest.files.length,
+      applicationReady: false,
+      project,
+    };
     await writeFile(
       join(target, "restore-report.json"),
-      JSON.stringify(
-        {
-          restoredAt: new Date().toISOString(),
-          source: manifest.source,
-          version: manifest.version,
-          databaseFingerprintsMatch: true,
-          fileChecksumsMatch: true,
-          tables: Object.fromEntries(
-            Object.entries(actual).map(([db, tables]) => [
-              db,
-              Object.keys(tables).length,
-            ]),
-          ),
-          files: manifest.files.length,
-        },
-        null,
-        2,
-      ),
+      JSON.stringify(report, null, 2),
     );
     console.log(
       "All three databases and file checksums match. Starting the restored stack.",
@@ -436,7 +458,14 @@ export async function restore(input, target, project, password = passphrase) {
     for (let i = 0; i < 90; i++) {
       try {
         const r = await fetch("http://localhost:8088/api/health/ready");
-        if (r.ok) return { manifest, target, project };
+        if (r.ok) {
+          report.applicationReady = true;
+          await writeFile(
+            join(target, "restore-report.json"),
+            JSON.stringify(report, null, 2),
+          );
+          return { manifest, target, project };
+        }
       } catch {
         /* bounded startup */
       }
@@ -450,7 +479,7 @@ export async function restore(input, target, project, password = passphrase) {
       );
     throw e;
   } finally {
-    await rm(work, { recursive: true, force: true });
+    await removeOwnedDirectory(work, join(root, ".local"), "backup-work-");
   }
 }
 if (

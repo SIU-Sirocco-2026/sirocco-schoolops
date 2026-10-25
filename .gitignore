@@ -8,3 +8,4 @@ playwright-report/
 .DS_Store
 
 .local/
+/restore-report.json

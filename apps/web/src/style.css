@@ -1119,6 +1119,35 @@ h3 {
   background: #fbe9e5;
   color: #8c3025;
 }
+
+@media (max-width: 700px) {
+  .sidebar {
+    flex-wrap: wrap;
+  }
+  .sidebar .brand {
+    order: 1;
+  }
+  .sidebar-footer {
+    order: 2;
+    margin-left: auto;
+  }
+  .sidebar nav {
+    display: flex;
+    flex-wrap: wrap;
+    order: 3;
+    flex-basis: 100%;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .sidebar nav .nav-item {
+    width: auto;
+    flex: 1 1 140px;
+    min-height: 44px;
+    margin-bottom: 0;
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+}
 @media (max-width: 600px) {
   .report-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));

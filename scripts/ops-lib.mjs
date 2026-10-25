@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { openSync, closeSync, existsSync, chmodSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname, basename } from "node:path";
+import { realpath, lstat, rm } from "node:fs/promises";
 export const root = resolve(import.meta.dirname, "..");
 export const utilityImage =
   "node:22.16.0-alpine@sha256:41e4389f3d988d2ed55392df4db1420ad048ae53324a8e2b7c6d19508288107e";
@@ -50,6 +51,19 @@ export function privateDirectory(path) {
 }
 export function sourceRevision() {
   return run("git", ["rev-parse", "HEAD"]).trim();
+}
+export async function removeOwnedDirectory(path, parent, prefix) {
+  const base = await realpath(parent),
+    target = await realpath(path);
+  if (
+    dirname(target) !== base ||
+    !basename(target).startsWith(prefix) ||
+    (await lstat(path)).isSymbolicLink()
+  )
+    throw new Error(
+      "Refusing recursive cleanup outside the owned temporary directory",
+    );
+  await rm(target, { recursive: true, force: true });
 }
 export function runningServices(options = {}) {
   return compose(["ps", "--services", "--status", "running"], options)

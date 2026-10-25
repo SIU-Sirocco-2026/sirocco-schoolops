@@ -13,6 +13,10 @@ export default defineConfig({
     ["html", { open: "never" }],
     ["json", { outputFile: "test-results/browser-results.json" }],
   ],
-  use: { baseURL: "http://localhost:8088", trace: "retain-on-failure" },
+  use: {
+    baseURL: "http://localhost:8088",
+    trace: "retain-on-failure",
+    actionTimeout: 20000,
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { encrypt, decrypt } from "../backup-crypto.mjs";
 import { safeEntries } from "../backup.mjs";
+import { removeOwnedDirectory } from "../ops-lib.mjs";
 test("encrypted backup roundtrip authenticates bytes, rejects wrong key and damage", async () => {
   const dir = await mkdtemp(join(tmpdir(), "schoolops-crypto-"));
   try {
@@ -32,7 +33,12 @@ test("encrypted backup roundtrip authenticates bytes, rejects wrong key and dama
       /at least 16/,
     );
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await assert.rejects(
+      removeOwnedDirectory(dir, dir, "schoolops-crypto-"),
+      /Refusing/,
+    );
+    assert.ok((await stat(dir)).isDirectory());
+    await removeOwnedDirectory(dir, tmpdir(), "schoolops-crypto-");
   }
 });
 test("restore archive rejects traversal, absolute paths and Windows path tricks", () => {

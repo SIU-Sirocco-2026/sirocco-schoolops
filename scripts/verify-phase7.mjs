@@ -11,6 +11,7 @@ import {
   docker,
   runningServices,
   sourceRevision,
+  run,
 } from "./ops-lib.mjs";
 
 const id = randomUUID().slice(0, 8),
@@ -162,6 +163,20 @@ try {
       assert.equal(report.source, originalSource);
       assert.equal(report.databaseFingerprintsMatch, true);
       assert.equal(report.fileChecksumsMatch, true);
+      assert.equal(report.applicationReady, true);
+      assert.equal(
+        run("git", ["rev-parse", "HEAD"], { cwd: target }).trim(),
+        originalSource,
+      );
+      assert.equal(
+        run("git", ["status", "--porcelain"], { cwd: target }).trim(),
+        "",
+      );
+      assert.equal(
+        JSON.parse(compose(["config", "--format", "json"], { cwd: target }))
+          .name,
+        project,
+      );
       await mkdir(join(root, "test-results"), { recursive: true });
       await writeFile(
         join(root, "test-results/restore-report.json"),
@@ -278,9 +293,37 @@ try {
       );
     },
   );
+  await check(
+    "restored installation can take another versioned backup using its own source history and project scope",
+    async () => {
+      const nextArchive = join(dir, "restored-installation.sirocco");
+      run(
+        process.execPath,
+        ["scripts/backup.mjs", "create", "--output", nextArchive],
+        {
+          cwd: target,
+          env: { ...process.env, SIROCCO_BACKUP_PASSPHRASE: password },
+          timeout: 1200000,
+        },
+      );
+      assert.ok((await stat(nextArchive)).size > 0);
+      assert.match(
+        await readFile(nextArchive + ".sha256", "utf8"),
+        /^[a-f0-9]{64}  /,
+      );
+    },
+  );
 } finally {
   try {
-    if (restoredStarted)
+    if (
+      restoredStarted &&
+      docker([
+        "ps",
+        "-aq",
+        "--filter",
+        `label=com.docker.compose.project=${project}`,
+      ]).trim()
+    )
       compose(["stop", "-t", "30"], { cwd: target, project });
   } finally {
     if (originalPaused) {

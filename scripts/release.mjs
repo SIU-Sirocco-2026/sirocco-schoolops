@@ -57,6 +57,7 @@ const restored = JSON.parse(
 assert.equal(restored.source, source);
 assert.equal(restored.databaseFingerprintsMatch, true);
 assert.equal(restored.fileChecksumsMatch, true);
+assert.equal(restored.applicationReady, true);
 const browser = JSON.parse(
   await readFile(join(root, "test-results/browser-results.json"), "utf8"),
 );
