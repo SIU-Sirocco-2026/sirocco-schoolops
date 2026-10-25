@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { Router } from "express";
 import type pg from "pg";
 import { z } from "zod";

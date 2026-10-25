@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./http.js";
 

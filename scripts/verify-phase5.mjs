@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

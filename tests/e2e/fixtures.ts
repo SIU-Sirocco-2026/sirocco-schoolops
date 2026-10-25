@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { test as base, expect } from "@playwright/test";
 import { setTimeout as sleep } from "node:timers/promises";
 

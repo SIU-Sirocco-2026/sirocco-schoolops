@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { root, run, compose, docker, sourceRevision } from "./ops-lib.mjs";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import type pg from "pg";
 
 export async function phase3Migration(client: pg.PoolClient) {

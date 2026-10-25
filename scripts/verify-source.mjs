@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import assert from "node:assert/strict";
 import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
 import { resolve, dirname, join } from "node:path";
@@ -5,6 +7,14 @@ import YAML from "yaml";
 import { root, run, sourceRevision } from "./ops-lib.mjs";
 const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const files = run("git", ["ls-files", "-z"]).split("\0").filter(Boolean);
+let checkedSourceLicenses = 0;
+for (const name of files.filter((f) => /\.(ts|tsx|mjs|ps1)$/.test(f))) {
+  const text = await readFile(join(root, name), "utf8");
+  assert.ok(text.split(/\r?\n/).slice(0, 3).some((line) =>
+    /^(?:\/\/|#) SPDX-License-Identifier: Apache-2\.0$/.test(line)),
+    `Missing source license notice: ${name}`);
+  checkedSourceLicenses++;
+}
 for (const name of files)
   assert.ok(
     !/(^|\/)(node_modules|\.env|generated|test-results|playwright-report|\.local)(\/|$)/.test(
@@ -128,6 +138,7 @@ await writeFile(
       version: pkg.version,
       checkedLinks,
       checkedOperations,
+      checkedSourceLicenses,
       privateFilesTracked: false,
       imageDigestsPinned: true,
       openApiValid: true,

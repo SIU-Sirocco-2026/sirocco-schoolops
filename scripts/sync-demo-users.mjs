@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 const env = Object.fromEntries(

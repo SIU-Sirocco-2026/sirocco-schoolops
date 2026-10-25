@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# See LICENSE and NOTICE in the repository root.
 # Windows-only recovery for Docker Desktop's stale Unix socket reparse points.
 # This script never deletes Docker images, containers, WSL disks or volumes.
 $ErrorActionPreference = 'Stop'

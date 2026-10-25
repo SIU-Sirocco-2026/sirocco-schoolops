@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { pool, migrate } from "./db.js";
 import { Flowable } from "./workflow.js";
 import { ObjectStore } from "./storage.js";

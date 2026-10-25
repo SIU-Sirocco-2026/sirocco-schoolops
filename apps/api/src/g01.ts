@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { createCaseRecord } from "./case-create.js";
 import { Router } from "express";
 import { activePack, validatePayload } from "./packs.js";

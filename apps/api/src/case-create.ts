@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import type pg from "pg";
 import { randomUUID } from "node:crypto";
 import { enqueueCommand, recordCaseEvent } from "./outbox.js";

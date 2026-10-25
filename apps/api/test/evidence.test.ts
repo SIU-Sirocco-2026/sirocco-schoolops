@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";

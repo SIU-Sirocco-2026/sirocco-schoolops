@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { test, expect } from "./fixtures.js";
 import { readFileSync } from "node:fs";
 import { client } from "../../scripts/test-client.mjs";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import assert from "node:assert/strict";
 import { readFile, writeFile, mkdir, readdir, stat } from "node:fs/promises";
 import { join, resolve, basename } from "node:path";

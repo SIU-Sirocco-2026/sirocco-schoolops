@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { spawnSync } from "node:child_process";
 import { openSync, closeSync, existsSync, chmodSync, mkdirSync } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";

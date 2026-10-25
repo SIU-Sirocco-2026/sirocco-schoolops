@@ -2,6 +2,7 @@
 
 ## Chưa phát hành
 
+- Ghi SPDX Apache-2.0 và tham chiếu LICENSE/NOTICE trong từng tệp mã/công cụ do đội viết; giữ riêng giấy phép thành phần bên ngoài và không đổi bundle đã pin.
 - Xử lý phản biện tài liệu: hướng dẫn lấy đúng source, mô tả bài toán/đóng góp, sơ đồ kiến trúc, ảnh và video G01 có revision/checksum.
 - Bổ sung thử nhiều vai trò trên một stack, kế hoạch người dùng mục tiêu, điều kiện đạt/rớt, ma trận quyền, mẫu lỗi và CODE_OF_CONDUCT; giữ trạng thái chờ người thử và review mã.
 - Nâng Ajv lên 8.18.0 và fast-xml-parser lên 5.7.0 sau audit production; thêm cổng CI và lưu notice MIT của entities từ commit upstream đã pin.

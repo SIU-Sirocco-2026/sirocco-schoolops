@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import type pg from "pg";
 export const environmentOfficer = "66666666-6666-4666-8666-666666666666";
 export const environmentIngestor = "77777777-7777-4777-8777-777777777777";

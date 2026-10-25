@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { scanWorkerId } from "./phase3-db.js";
 import { Router, raw } from "express";
 import type pg from "pg";

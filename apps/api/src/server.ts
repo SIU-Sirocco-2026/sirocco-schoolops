@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { createApp } from "./app.js";
 import { remoteKey } from "./auth.js";
 import { migrate, pool, technicianId } from "./db.js";

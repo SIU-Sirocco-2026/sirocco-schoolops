@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 // Opt-in recording on a synthetic-data demo. Creates and closes one G01 case.
 import { chromium, expect } from "@playwright/test";
 import { readFile, mkdir, writeFile, rename } from "node:fs/promises";

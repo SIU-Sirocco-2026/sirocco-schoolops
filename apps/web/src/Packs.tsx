@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { useEffect, useState } from "react";
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 type Revision = {

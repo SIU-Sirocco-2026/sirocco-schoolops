@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import { defineConfig, devices } from "@playwright/test";
 import { evidenceContext } from "./scripts/evidence.mjs";
 export default defineConfig({

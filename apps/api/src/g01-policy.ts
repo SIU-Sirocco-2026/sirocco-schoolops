@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import type { Principal } from "./auth.js";
 
 // Shared by list and report/drill-down. Technical admin has no implicit access.

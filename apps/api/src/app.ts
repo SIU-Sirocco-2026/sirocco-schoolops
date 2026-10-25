@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
 import express, { type ErrorRequestHandler } from "express";
 import { randomUUID, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
