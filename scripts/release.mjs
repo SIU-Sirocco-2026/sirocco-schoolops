@@ -5,6 +5,11 @@ import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { root, run, sourceRevision } from "./ops-lib.mjs";
 import { sha256 } from "./backup-crypto.mjs";
+import {
+  integrationCounts,
+  assertIntegration,
+  assertBrowser,
+} from "./release-gates.mjs";
 const hash = (data) => createHash("sha256").update(data).digest("hex");
 const source = sourceRevision();
 assert.equal(
@@ -15,31 +20,11 @@ assert.equal(
 const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 assert.match(pkg.version, /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/);
 const summary = [];
-for (const name of [
-  "integration",
-  "g01-integration",
-  "phase3-integration",
-  "phase4-integration",
-  "phase5-integration",
-  "phase6-integration",
-  "phase7-integration",
-]) {
+for (const name of Object.keys(integrationCounts)) {
   const report = JSON.parse(
     await readFile(join(root, `test-results/${name}.json`), "utf8"),
   );
-  assert.equal(report.sourceSha, source, `Stale evidence: ${name}`);
-  assert.equal(report.version, pkg.version);
-  assert.equal(report.sourceDirty, false);
-  assert.ok(
-    Object.values(report.runtimeRevisions).length === 3 &&
-      Object.values(report.runtimeRevisions).every((s) => s === source),
-    `Runtime/source mismatch: ${name}`,
-  );
-  assert.ok(
-    report.results.length > 0 &&
-      report.results.every((r) => r.status === "pass"),
-    `Incomplete acceptance: ${name}`,
-  );
+  assertIntegration(report, name, source, pkg.version);
   summary.push({
     name,
     testedAt: report.testedAt,
@@ -61,20 +46,7 @@ assert.equal(restored.applicationReady, true);
 const browser = JSON.parse(
   await readFile(join(root, "test-results/browser-results.json"), "utf8"),
 );
-assert.equal(browser.metadata.sourceSha, source);
-assert.equal(browser.metadata.version, pkg.version);
-assert.equal(browser.metadata.sourceDirty, false);
-assert.ok(
-  Object.values(browser.metadata.runtimeRevisions).every((s) => s === source),
-  "Browser runtime/source mismatch",
-);
-assert.ok(
-  browser.stats.expected > 0 &&
-    browser.stats.unexpected === 0 &&
-    browser.stats.flaky === 0 &&
-    browser.stats.skipped === 0,
-  "Browser acceptance must pass without flaky/skipped scenarios",
-);
+assertBrowser(browser, source, pkg.version);
 const legalDir = join(root, "test-results/legal");
 const legal = JSON.parse(
   await readFile(join(legalDir, "dependency-inventory.json"), "utf8"),
