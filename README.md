@@ -20,6 +20,7 @@ pnpm demo:verify:phase3
 pnpm demo:verify:phase4
 pnpm demo:verify:phase5
 pnpm demo:verify:phase6
+pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm demo:verify:phase7
 pnpm source:verify
