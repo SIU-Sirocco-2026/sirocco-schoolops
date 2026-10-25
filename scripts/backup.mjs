@@ -139,6 +139,14 @@ export async function backup(output, password = passphrase) {
       "SIROCCO_BACKUP_PASSPHRASE must have at least 16 characters",
     );
   ensureDocker();
+  if (run("git", ["status", "--porcelain"]).trim())
+    throw new Error("Commit source changes before taking a versioned backup");
+  try {
+    await stat(output);
+    throw new Error("Backup output already exists");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
   const services = runningServices();
   if (!services.includes("postgres") || !services.includes("api"))
     throw new Error("A running initialized stack is required");
