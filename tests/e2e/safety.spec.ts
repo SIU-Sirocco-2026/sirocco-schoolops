@@ -83,6 +83,9 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
     );
   await s!.getByRole("button", { name: "Giao xử lý", exact: true }).click();
   await s!.getByRole("button", { name: "Nhận xử lý", exact: true }).click();
+  await expect(
+    s!.getByRole("region", { name: "Bằng chứng hồ sơ", exact: true }),
+  ).toHaveCount(1);
   await s!
     .getByLabel("Biện pháp xử lý", { exact: true })
     .fill("Kiểm tra và di chuyển vật cản giả lập.");
@@ -114,6 +117,9 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
     .getByRole("button", { name: "Phê duyệt và đóng hồ sơ", exact: true })
     .click();
   await expect(a!.locator(".case-detail > .status")).toHaveText("Đã đóng");
+  await expect(
+    a!.getByRole("region", { name: "Bằng chứng hồ sơ", exact: true }),
+  ).toHaveCount(1);
   await a!
     .getByRole("button", { name: "Xem nhật ký truy cập", exact: true })
     .click();

@@ -595,7 +595,7 @@ export function G01({
                 </div>
               )}
               <Evidence
-                key={detail.item.id}
+                key={`evidence-${detail.item.id}`}
                 request={request}
                 caseId={detail.item.id}
                 taskId={detail.item.taskId}
@@ -629,7 +629,7 @@ export function G01({
               )}
               {catalog?.canAudit && (
                 <AccessLog
-                  key={detail.item.id}
+                  key={`access-log-${detail.item.id}`}
                   request={request}
                   caseId={detail.item.id}
                 />
