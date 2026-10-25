@@ -1,5 +1,12 @@
 # Changelog
 
+## Chưa phát hành
+
+- Xử lý phản biện tài liệu: hướng dẫn lấy đúng source, mô tả bài toán/đóng góp, sơ đồ kiến trúc, ảnh và video G01 có revision/checksum.
+- Bổ sung thử nhiều vai trò trên một stack, kế hoạch người dùng mục tiêu, điều kiện đạt/rớt, ma trận quyền, mẫu lỗi và CODE_OF_CONDUCT; giữ trạng thái chờ người thử và review mã.
+- Nâng Ajv lên 8.18.0 và fast-xml-parser lên 5.7.0 sau audit production; thêm cổng CI và lưu notice MIT của entities từ commit upstream đã pin.
+- Bỏ đường dẫn profile cá nhân trong source mới, giữ helper Docker Windows theo cấu hình local; kiểm tra đường dẫn công khai và phiên bản Node.
+
 ## 0.1.0-rc.1 — 2026-10-25
 
 - Thêm cold backup mã hóa và restore vào project mới; kiểm chứng ba database, checksum kho tệp, đăng nhập/workflow/idempotency/ACL/lineage và đối soát báo cáo sau khôi phục.

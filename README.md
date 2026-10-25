@@ -6,8 +6,10 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 [Bản thử v0.1.0-rc.1](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.1) nằm ở tag; chuỗi PR chưa merge vào `main`. Bản RC sẵn sàng cho đánh giá nội bộ, còn chờ người dùng mục tiêu xác nhận.
 
+[PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản sửa sau phản biện và vá hai dependency mà audit đã đánh dấu. Tag RC cũ giữ nguyên dependency cũ. Để review/thử bản sửa, lấy nhánh dưới đây và kiểm tra CI của PR; để tái lập RC lịch sử, thay tên nhánh bằng `v0.1.0-rc.1`.
+
 ```powershell
-git clone --branch v0.1.0-rc.1 --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch fix/hoan-thien-sau-phan-bien --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
 pnpm install --frozen-lockfile
 pnpm demo:init

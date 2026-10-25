@@ -4,6 +4,8 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
+Các lệnh dưới tái lập RC đã phát hành. Nhánh `fix/hoan-thien-sau-phan-bien` ở [PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản vá dependency và tài liệu mới; để thử nhánh đó, thay lệnh checkout tag bằng `git checkout fix/hoan-thien-sau-phan-bien` sau khi clone và kiểm tra CI của PR. Không coi archive RC cũ đã có các bản vá này.
+
 ```powershell
 git clone https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
