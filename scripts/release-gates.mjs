@@ -20,6 +20,49 @@ export function assertProvenance(report, source, version) {
     "Runtime/source mismatch",
   );
 }
+export function assertDependencyAudit(report, source, lockfileSha256) {
+  assert.equal(report?.sourceSha, source, "Stale dependency audit source");
+  assert.equal(
+    report.sourceDirty,
+    false,
+    "Dependency audit used a dirty source",
+  );
+  assert.equal(
+    report.lockfileSha256,
+    lockfileSha256,
+    "Dependency audit lockfile differs",
+  );
+  assert.equal(report.failAt, "moderate");
+  assert.match(
+    report.scope,
+    /^pnpm audit --prod(?:;|$)/,
+    "Production audit scope required",
+  );
+  assert.ok(
+    Number.isFinite(Date.parse(report.checkedAt)),
+    "Audit timestamp missing",
+  );
+  const counts = report.audit?.metadata?.vulnerabilities;
+  assert.ok(!report.audit?.error && counts, "Dependency audit incomplete");
+  for (const key of ["info", "low", "moderate", "high", "critical"])
+    assert.ok(
+      Number.isInteger(counts[key]) && counts[key] >= 0,
+      `Missing audit count: ${key}`,
+    );
+  assert.equal(
+    counts.moderate + counts.high + counts.critical,
+    0,
+    "Production dependency advisories require review/fix",
+  );
+  return {
+    sourceSha: source,
+    lockfileSha256,
+    checkedAt: report.checkedAt,
+    scope: report.scope,
+    vulnerabilities: counts,
+    failAt: report.failAt,
+  };
+}
 export function assertIntegration(report, name, source, version) {
   assertProvenance(report, source, version);
   assert.equal(

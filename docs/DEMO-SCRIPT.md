@@ -1,17 +1,17 @@
-# Demo xuyên suốt — 0.1.0-rc.1
+# Demo xuyên suốt — 0.1.0-rc.2
 
 Trước buổi demo: checkout đúng tag/SHA, giữ cấu hình/volume demo riêng, chạy [cài đặt](INSTALL.md), đợi stack healthy. Ghi version và `sourceRevision` từ `/api/config`, SHA/tag của release và thời điểm chạy. Không làm demo đồng thời với các bộ gây lỗi/restore. Dùng các tài khoản giả lập trong [user guide](USER-GUIDE.md); giữ mật khẩu ngoài slide/video/repo.
 
-| Chặng | Người thực hiện và thao tác | Kết quả cần chỉ ra |
-| --- | --- | --- |
-| 1. G01 | reporter báo máy chiếu A101 không lên hình trên màn hình điện thoại | Có mã; account khác không tùy ý xử lý |
-| 2. Nhánh trả lại | coordinator trả bổ sung với lý do, reporter bổ sung; sau đó tiếp nhận và giao technician/approver có hạn | Timeline giữ mô tả và hai lần chuyển; người không được giao không thao tác được |
-| 3. Bằng chứng | technician nhận việc, ghi biện pháp/kết quả; thử gửi khi thiếu evidence; upload TXT/ảnh giả lập và chờ sạch | Thiếu/chưa sạch bị chặn; checksum/uploader/bước được giữ; approver trả xử lý rồi yêu cầu bằng chứng mới, sau đó phê duyệt |
-| 4. Phiên bản gói | Tạo case v1 còn mở, admin nạp/kích hoạt v2; tạo case mới | Case v1 giữ chính sách cũ, v2 chỉ nhận ảnh sạch bắt buộc. Gói sai không đổi active; quản trị không đọc nội dung case |
-| 5. G02 | Chạy replay xác định, environment mở cảnh báo/lineage, xác minh và đóng có lý do/bằng chứng | Truy được raw/normalized/quality/rule/case; trùng không sinh đôi; số đo hồi phục không tự đóng việc |
-| 6. G03 | safety_reporter báo vật cản trung tính; safety giao/xử lý, safety_reviewer đóng; thử reporter/admin biết ID | Account G01/admin không thấy nội dung/file/count G03; người được cấp quyền hoàn tất, access log có allowed/denied |
-| 7. Báo cáo | Mỗi role mở thẻ tổng/đang mở/quá hạn/hoàn thành rồi mở danh sách nguồn | Tổng đối chiếu trong cùng quyền, không cộng “quá hạn” thành nhóm tách khỏi “đang mở” |
-| 8. Cài/restore/release | Mở restore report, ma trận nghiệm thu, source archive và SHA256SUMS | Ba DB và tệp đã khôi phục; workflow đang xử lý tiếp tục được; assets gắn đúng SHA, không giả đồng đội đã review |
+| Chặng                  | Người thực hiện và thao tác                                                                                 | Kết quả cần chỉ ra                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1. G01                 | reporter báo máy chiếu A101 không lên hình trên màn hình điện thoại                                         | Có mã; account khác không tùy ý xử lý                                                                                     |
+| 2. Nhánh trả lại       | coordinator trả bổ sung với lý do, reporter bổ sung; sau đó tiếp nhận và giao technician/approver có hạn    | Timeline giữ mô tả và hai lần chuyển; người không được giao không thao tác được                                           |
+| 3. Bằng chứng          | technician nhận việc, ghi biện pháp/kết quả; thử gửi khi thiếu evidence; upload TXT/ảnh giả lập và chờ sạch | Thiếu/chưa sạch bị chặn; checksum/uploader/bước được giữ; approver trả xử lý rồi yêu cầu bằng chứng mới, sau đó phê duyệt |
+| 4. Phiên bản gói       | Tạo case v1 còn mở, admin nạp/kích hoạt v2; tạo case mới                                                    | Case v1 giữ chính sách cũ, v2 chỉ nhận ảnh sạch bắt buộc. Gói sai không đổi active; quản trị không đọc nội dung case      |
+| 5. G02                 | Chạy replay xác định, environment mở cảnh báo/lineage, xác minh và đóng có lý do/bằng chứng                 | Truy được raw/normalized/quality/rule/case; trùng không sinh đôi; số đo hồi phục không tự đóng việc                       |
+| 6. G03                 | safety_reporter báo vật cản trung tính; safety giao/xử lý, safety_reviewer đóng; thử reporter/admin biết ID | Account G01/admin không thấy nội dung/file/count G03; người được cấp quyền hoàn tất, access log có allowed/denied         |
+| 7. Báo cáo             | Mỗi role mở thẻ tổng/đang mở/quá hạn/hoàn thành rồi mở danh sách nguồn                                      | Tổng đối chiếu trong cùng quyền, không cộng “quá hạn” thành nhóm tách khỏi “đang mở”                                      |
+| 8. Cài/restore/release | Mở restore report, ma trận nghiệm thu, source archive và SHA256SUMS                                         | Ba DB và tệp đã khôi phục; workflow đang xử lý tiếp tục được; assets gắn đúng SHA, không giả đồng đội đã review           |
 
 Lệnh chuẩn bị gói, sau khi đăng nhập CLI admin bằng cấu hình local:
 

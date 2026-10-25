@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // See LICENSE and NOTICE in the repository root.
 import { spawnSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { root, sourceRevision } from "./ops-lib.mjs";
+import { root, sourceRevision, run } from "./ops-lib.mjs";
 
 if (!process.env.npm_execpath) throw new Error("Run with pnpm security:audit.");
 const result = spawnSync(
@@ -36,6 +37,10 @@ await writeFile(
   JSON.stringify(
     {
       sourceSha: sourceRevision(),
+      sourceDirty: Boolean(run("git", ["status", "--porcelain"]).trim()),
+      lockfileSha256: createHash("sha256")
+        .update(await readFile(join(root, "pnpm-lock.yaml")))
+        .digest("hex"),
       checkedAt: new Date().toISOString(),
       scope:
         "pnpm audit --prod; registry advisories for production npm dependencies, not OS images or a penetration test",

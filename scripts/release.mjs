@@ -11,6 +11,7 @@ import {
   integrationCounts,
   assertIntegration,
   assertBrowser,
+  assertDependencyAudit,
 } from "./release-gates.mjs";
 const hash = (data) => createHash("sha256").update(data).digest("hex");
 const source = sourceRevision();
@@ -58,6 +59,13 @@ assert.ok(legal.components.length > 0);
 assert.equal(
   legal.lockfileSha256,
   hash(await readFile(join(root, "pnpm-lock.yaml"))),
+);
+const dependencyAudit = assertDependencyAudit(
+  JSON.parse(
+    await readFile(join(root, "test-results/dependency-audit.json"), "utf8"),
+  ),
+  source,
+  legal.lockfileSha256,
 );
 const output = resolve(
   root,
@@ -123,13 +131,14 @@ const acceptance = {
   browser: { passed: browser.stats.expected, flaky: 0, failed: 0, skipped: 0 },
   restore: restored,
   sourceAudit: audit,
+  dependencyAudit,
 };
 await writeFile(
   join(output, "acceptance-evidence.json"),
   JSON.stringify(acceptance, null, 2) + "\n",
 );
 const notes =
-  (await readFile(join(root, "docs/releases/0.1.0-rc.1.md"), "utf8")) +
+  (await readFile(join(root, `docs/releases/${pkg.version}.md`), "utf8")) +
   `\n\nSource SHA: ${source}\n\nBằng chứng tự động: ${summary.reduce((n, r) => n + r.checks.length, 0)} nhóm tích hợp; ${browser.stats.expected} bài browser đạt, không flaky. Phản hồi người dùng thật và review/merge vẫn chờ; bản này là release candidate.\n`;
 await writeFile(join(output, "RELEASE_NOTES.md"), notes);
 const files = await readdir(output);

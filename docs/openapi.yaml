@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Sirocco SchoolOps API
-  version: 0.1.0-rc.1
+  version: 0.1.0-rc.2
   description: Foundation, G01/G02/G03, evidence, versioned packs and scoped reports. All non-public endpoints verify JWT and current database membership. Local demo only; APISIX enforces 300 requests per minute per client IP. HTTP 429 includes X-RateLimit-Reset in seconds and may have an HTML body; clients must not assume every error is JSON.
 servers:
   - url: http://localhost:8088

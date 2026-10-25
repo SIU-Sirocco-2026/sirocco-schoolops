@@ -2,7 +2,11 @@
 // See LICENSE and NOTICE in the repository root.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertIntegration, assertBrowser } from "../release-gates.mjs";
+import {
+  assertIntegration,
+  assertBrowser,
+  assertDependencyAudit,
+} from "../release-gates.mjs";
 const source = "a".repeat(40),
   version = "0.1.0-rc.1";
 const provenance = {
@@ -11,6 +15,47 @@ const provenance = {
   sourceDirty: false,
   runtimeRevisions: { api: source, worker: source, web: source },
 };
+const dependencyAudit = {
+  sourceSha: source,
+  sourceDirty: false,
+  lockfileSha256: "f".repeat(64),
+  checkedAt: "2026-10-25T00:00:00Z",
+  scope: "pnpm audit --prod",
+  failAt: "moderate",
+  audit: {
+    metadata: {
+      vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0 },
+    },
+  },
+};
+test("release requires dependency evidence for the exact clean source and lockfile", () => {
+  const clean = assertDependencyAudit(dependencyAudit, source, "f".repeat(64));
+  assert.equal(clean.vulnerabilities.high, 0);
+  for (const change of [
+    (r) => (r.sourceSha = "b".repeat(40)),
+    (r) => (r.sourceDirty = true),
+    (r) => (r.lockfileSha256 = "e".repeat(64)),
+    (r) => delete r.checkedAt,
+  ]) {
+    const report = structuredClone(dependencyAudit);
+    change(report);
+    assert.throws(() => assertDependencyAudit(report, source, "f".repeat(64)));
+  }
+});
+test("release rejects vulnerable or incomplete dependency audit evidence", () => {
+  for (const change of [
+    (r) => (r.audit.metadata.vulnerabilities.moderate = 1),
+    (r) => (r.audit.metadata.vulnerabilities.high = 1),
+    (r) => (r.audit.error = "registry unavailable"),
+    (r) => delete r.audit.metadata.vulnerabilities.critical,
+    (r) => (r.failAt = "critical"),
+    (r) => (r.scope = "unrelated audit"),
+  ]) {
+    const report = structuredClone(dependencyAudit);
+    change(report);
+    assert.throws(() => assertDependencyAudit(report, source, "f".repeat(64)));
+  }
+});
 test("release rejects interrupted, failed, duplicate or stale integration evidence", () => {
   const complete = {
     ...provenance,

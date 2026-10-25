@@ -4,12 +4,12 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Tải đúng bản để thử
 
-[Bản thử v0.1.0-rc.1](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.1) nằm ở tag; chuỗi PR chưa merge vào `main`. Bản RC sẵn sàng cho đánh giá nội bộ, còn chờ người dùng mục tiêu xác nhận.
+[Bản thử v0.1.0-rc.2](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.2) nằm ở tag; chuỗi PR chưa merge vào `main`. Bản RC sẵn sàng cho đánh giá nội bộ, còn chờ người dùng mục tiêu xác nhận.
 
-[PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản sửa sau phản biện và vá hai dependency mà audit đã đánh dấu. Tag RC cũ giữ nguyên dependency cũ. Để review/thử bản sửa, lấy nhánh dưới đây và kiểm tra CI của PR; để tái lập RC lịch sử, thay tên nhánh bằng `v0.1.0-rc.1`.
+[PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản sửa sau phản biện và vá hai dependency mà audit đã đánh dấu. Tag RC cũ giữ nguyên dependency cũ. RC2 đóng gói các thay đổi này; lấy tag dưới đây để thử. Để tái lập RC lịch sử, thay tag bằng `v0.1.0-rc.1`.
 
 ```powershell
-git clone --branch fix/hoan-thien-sau-phan-bien --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch v0.1.0-rc.2 --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
 pnpm install --frozen-lockfile
 pnpm demo:init
@@ -30,7 +30,7 @@ Xem [giới thiệu và đối chiếu giải pháp](docs/PROJECT-OVERVIEW.md), 
 
 ## Trạng thái
 
-Bản ứng viên **0.1.0-rc.1** có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát. Giai đoạn 7 bổ sung công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. Mã nằm trên chuỗi PR chờ review/merge; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
+Bản ứng viên **0.1.0-rc.2** có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát. Giai đoạn 7 bổ sung công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. Mã nằm trên chuỗi PR chờ review/merge; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
 
 Bắt đầu: [cài từ source](docs/INSTALL.md), [người dùng](docs/USER-GUIDE.md), [demo xuyên suốt](docs/DEMO-SCRIPT.md), [backup/restore](docs/BACKUP-RESTORE.md), [giới hạn/bảo mật](SECURITY.md). Kỹ thuật: [giai đoạn 7](docs/PHASE-7.md), [gói v1/v2 và cách tạo gói](docs/PHASE-4.md), [G02](docs/PHASE-5.md), [G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml).
 

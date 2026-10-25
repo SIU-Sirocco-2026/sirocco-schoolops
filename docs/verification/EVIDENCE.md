@@ -1,5 +1,7 @@
 # Bằng chứng của bản RC và giới hạn kết luận
 
+RC2 lưu thêm dependency audit trong `acceptance-evidence.json`, gồm source, hash lockfile, phạm vi, thời điểm và số advisory. Công cụ đóng gói từ chối report khác source/lockfile, nguồn bẩn, báo cáo lỗi/thiếu hoặc advisory production mức vừa trở lên. Có hai bài unit mới cho các điều kiện này, đưa tổng unit/tool lên 40 (29 API + 4 web + 7 ops/release). Bằng chứng RC1 bên dưới giữ đúng phiên bản lịch sử; xem [ghi chú RC2](../releases/0.1.0-rc.2.md) để biết phần mới.
+
 Nguồn cố định của v0.1.0-rc.1 là commit `84f2ecfe31ff12b0d4cb3cd09899e37f14975e55`. [CI](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/actions/runs/40150424871) và [asset release](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.1) chứng minh bản đó. Tài liệu sửa sau tag không được coi là đã kiểm thử trong CI cũ.
 
 | Bằng chứng RC      | Cách hiểu và nguồn                                                                                                                                                                                                                                      |

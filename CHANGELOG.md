@@ -1,7 +1,8 @@
 # Changelog
 
-## Chưa phát hành
+## 0.1.0-rc.2 — 2026-10-25
 
+- Dependency audit được lưu trong bằng chứng release và ràng buộc source sạch/lockfile; release notes được chọn theo phiên bản thay vì cố định RC1.
 - Ghi SPDX Apache-2.0 và tham chiếu LICENSE/NOTICE trong từng tệp mã/công cụ do đội viết; giữ riêng giấy phép thành phần bên ngoài và không đổi bundle đã pin.
 - Xử lý phản biện tài liệu: hướng dẫn lấy đúng source, mô tả bài toán/đóng góp, sơ đồ kiến trúc, ảnh và video G01 có revision/checksum.
 - Bổ sung thử nhiều vai trò trên một stack, kế hoạch người dùng mục tiêu, điều kiện đạt/rớt, ma trận quyền, mẫu lỗi và CODE_OF_CONDUCT; giữ trạng thái chờ người thử và review mã.

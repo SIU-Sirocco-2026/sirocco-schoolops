@@ -4,12 +4,12 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
-Các lệnh dưới tái lập RC đã phát hành. Nhánh `fix/hoan-thien-sau-phan-bien` ở [PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản vá dependency và tài liệu mới; để thử nhánh đó, thay lệnh checkout tag bằng `git checkout fix/hoan-thien-sau-phan-bien` sau khi clone và kiểm tra CI của PR. Không coi archive RC cũ đã có các bản vá này.
+Các lệnh dưới lấy RC2 có bản vá dependency. Tag RC1 vẫn giữ source cũ; chỉ checkout `v0.1.0-rc.1` nếu cần tái lập bản lịch sử. Mã trên `main` còn chờ chuỗi PR review/merge.
 
 ```powershell
 git clone https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
-git checkout v0.1.0-rc.1
+git checkout v0.1.0-rc.2
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up
