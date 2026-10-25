@@ -34,8 +34,13 @@ Bản ứng viên **0.1.0-rc.2** có nền tảng và các luồng G01/G02/G03, 
 
 Bắt đầu: [cài từ source](docs/INSTALL.md), [người dùng](docs/USER-GUIDE.md), [demo xuyên suốt](docs/DEMO-SCRIPT.md), [backup/restore](docs/BACKUP-RESTORE.md), [giới hạn/bảo mật](SECURITY.md). Kỹ thuật: [giai đoạn 7](docs/PHASE-7.md), [gói v1/v2 và cách tạo gói](docs/PHASE-4.md), [G02](docs/PHASE-5.md), [G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml).
 
+Kiểm chứng và đóng gói từ Git checkout trên demo kỹ thuật riêng (có các bước chủ động gây lỗi/dừng dịch vụ):
+
 ```powershell
 pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm build
 pnpm demo:init
 pnpm demo:up
 pnpm demo:users
@@ -50,6 +55,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm demo:verify:phase7
 pnpm source:verify
+pnpm security:audit
 pnpm legal:audit
 pnpm release:prepare
 ```

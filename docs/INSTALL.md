@@ -49,6 +49,8 @@ pnpm demo:verify:phase5
 pnpm demo:verify:phase6
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm source:verify
+pnpm security:audit
 pnpm legal:audit
 pnpm demo:verify:phase7
 ```
