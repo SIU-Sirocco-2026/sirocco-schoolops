@@ -307,7 +307,11 @@ export function G01({
         <div>
           <h2>Hồ sơ {prefix.toUpperCase()}</h2>
           <p className="intro">
-            Báo hỏng, phối hợp xử lý và nghiệm thu tại một nơi.
+            {prefix === "g03"
+              ? "Theo dõi phản ánh an toàn trong phạm vi được cấp quyền."
+              : prefix === "g02"
+                ? "Xác minh cảnh báo, ghi biện pháp và theo dõi kết quả xử lý."
+                : "Báo hỏng, phối hợp xử lý và nghiệm thu tại một nơi."}
           </p>
         </div>
         {catalog?.canCreate && (

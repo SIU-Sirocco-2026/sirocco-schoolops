@@ -165,6 +165,19 @@ export async function backup(output, password = passphrase) {
     console.log(
       "Pausing writers for a consistent database/workflow/file snapshot.",
     );
+    const revision = sourceRevision();
+    for (const service of ["api", "worker", "web"]) {
+      const id = compose(["ps", "-q", service]).trim();
+      if (
+        !id ||
+        JSON.parse(docker(["inspect", id]))[0].Config.Labels?.[
+          "org.opencontainers.image.revision"
+        ] !== revision
+      )
+        throw new Error(
+          "Running images do not match this source commit. Run pnpm demo:up from the clean checkout before backup.",
+        );
+    }
     // Close ingress first, then API/worker before Identity, engine and file store.
     stopped = true;
     if (writers.includes("gateway")) compose(["stop", "-t", "30", "gateway"]);
@@ -329,7 +342,15 @@ export async function restore(input, target, project, password = passphrase) {
       ["s3.json", "infra/generated/s3.json"],
     ])
       await copyFile(join(data, from), join(target, to));
-    const options = { cwd: target, project };
+    const options = {
+      cwd: target,
+      project,
+      env: {
+        ...process.env,
+        SIROCCO_SOURCE_REVISION: manifest.source,
+        SIROCCO_APP_VERSION: manifest.version,
+      },
+    };
     console.log(
       `Restoring ${manifest.version} (${manifest.source.slice(0, 12)}) into new project ${project}.`,
     );

@@ -61,9 +61,17 @@ services:
       postgres: { condition: service_healthy }
     networks: [core]
   api:
-    build: { context: ., dockerfile: apps/api/Dockerfile }
+    build: &api-build
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        {
+          SOURCE_REVISION: "${SIROCCO_SOURCE_REVISION:-unknown}",
+          APP_VERSION: "${SIROCCO_APP_VERSION:-dev}",
+        }
     environment:
       PORT: "3000"
+      APP_SOURCE_REVISION: ${SIROCCO_SOURCE_REVISION:-unknown}
       DATABASE_URL: postgresql://schoolops:${APP_DB_PASSWORD}@postgres:5432/schoolops
       OIDC_ISSUER: http://localhost:8180/realms/sirocco
       OIDC_JWKS_URL: http://keycloak:8080/realms/sirocco/protocol/openid-connect/certs
@@ -139,7 +147,7 @@ services:
       start_period: 30s
     networks: [core]
   worker:
-    build: { context: ., dockerfile: apps/api/Dockerfile }
+    build: *api-build
     command: [node, apps/api/dist/worker.js]
     environment:
       DATABASE_URL: postgresql://schoolops:${APP_DB_PASSWORD}@postgres:5432/schoolops
@@ -161,7 +169,14 @@ services:
     restart: unless-stopped
     networks: [core]
   web:
-    build: { context: ., dockerfile: apps/web/Dockerfile }
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        {
+          SOURCE_REVISION: "${SIROCCO_SOURCE_REVISION:-unknown}",
+          APP_VERSION: "${SIROCCO_APP_VERSION:-dev}",
+        }
     networks: [core]
   gateway:
     image: apache/apisix:3.19.0-ubuntu@sha256:bb4958b943949b3543353481eff1333e10b3323c6095dd0af4406de2b8cf738e

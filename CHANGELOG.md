@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-rc.1 — 2026-10-25
+
+- Thêm cold backup mã hóa và restore vào project mới; kiểm chứng ba database, checksum kho tệp, đăng nhập/workflow/idempotency/ACL/lineage và đối soát báo cáo sau khôi phục.
+- Thông báo lỗi gateway/quota có bước tiếp theo, giữ biểu mẫu, điều tiết polling; kiểm thử mobile cho các vai trò xử lý và từ chối browser flaky khi đóng gói.
+- Khóa digest image, gắn source/version vào runtime/report, kiểm tra OpenAPI/link/nguồn riêng tư, tạo archive tái tạo được cùng manifest/checksum/notes/bằng chứng.
+- Chốt Apache-2.0 cho mã mới, nguồn gốc/notice, inventory/SBOM, hướng dẫn cài/người dùng/vận hành/demo/bảo mật. Phản hồi người dùng thật và review chuỗi PR còn chờ.
+
+## Nội dung tích hợp từ các giai đoạn trước
 
 - Thêm G02 PM2.5 replay có expected results, quality/raw/normalized, rule/episode/lineage và cán bộ đóng có lý do qua Case/Task/Evidence dùng chung.
 - Thêm G03 tình huống an toàn giả lập, ACL theo case/current role, kiểm tra mọi đường list/search/report/notification/file, nhật ký truy cập không ghi nội dung; admin không có quyền đọc ngầm.

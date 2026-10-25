@@ -8,5 +8,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/api apps/api
 RUN pnpm --filter @sirocco/api build
 ENV NODE_ENV=production
+ARG SOURCE_REVISION=unknown
+ARG APP_VERSION=dev
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION org.opencontainers.image.version=$APP_VERSION
 USER node
 CMD ["node", "apps/api/dist/server.js"]

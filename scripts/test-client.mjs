@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { evidenceContext } from "./evidence.mjs";
 export const root = resolve(import.meta.dirname, "..");
 export const base = "http://localhost:8088/api";
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -144,6 +145,7 @@ export const png = Buffer.from(
   "base64",
 );
 export async function recorder(name) {
+  const provenance = evidenceContext();
   const results = [];
   async function check(title, fn) {
     try {
@@ -158,7 +160,7 @@ export async function recorder(name) {
       await writeFile(
         resolve(root, `test-results/${name}.json`),
         JSON.stringify(
-          { testedAt: new Date().toISOString(), results },
+          { ...provenance, testedAt: new Date().toISOString(), results },
           null,
           2,
         ),

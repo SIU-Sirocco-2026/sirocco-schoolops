@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { evidenceContext } from "./evidence.mjs";
+const provenance = evidenceContext();
 const root = resolve(import.meta.dirname, "..");
 const env = Object.fromEntries(
   (await readFile(resolve(root, ".env"), "utf8"))
@@ -185,6 +187,7 @@ await writeFile(
   resolve(root, "test-results/integration.json"),
   JSON.stringify(
     {
+      ...provenance,
       testedAt: new Date().toISOString(),
       runId: item.id,
       processId: item.processId,

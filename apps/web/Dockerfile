@@ -8,5 +8,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web apps/web
 RUN pnpm --filter @sirocco/web build
 FROM nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+ARG SOURCE_REVISION=unknown
+ARG APP_VERSION=dev
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION org.opencontainers.image.version=$APP_VERSION
 COPY infra/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html

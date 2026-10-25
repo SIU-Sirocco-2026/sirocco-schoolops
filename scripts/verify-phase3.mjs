@@ -3,6 +3,8 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { evidenceContext } from "./evidence.mjs";
+const provenance = evidenceContext();
 
 const root = resolve(import.meta.dirname, ".."),
   base = "http://localhost:8088/api/g01";
@@ -179,7 +181,7 @@ async function save() {
   await writeFile(
     resolve(root, "test-results/phase3-integration.json"),
     JSON.stringify(
-      { testedAt: new Date().toISOString(), cases, results },
+      { ...provenance, testedAt: new Date().toISOString(), cases, results },
       null,
       2,
     ),

@@ -84,6 +84,7 @@ export function createApp(options: Options) {
       },
       phase: 7,
       version: applicationVersion,
+      sourceRevision: process.env.APP_SOURCE_REVISION || "unknown",
     }),
   );
   app.use("/api", async (req, res, next) => {

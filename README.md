@@ -4,9 +4,9 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Trạng thái
 
-Đã triển khai và có bộ nghiệm thu cho giai đoạn 1–6: nền tảng dùng chung, G01, bằng chứng sạch/khôi phục lỗi, registry gói v1/v2, G02 PM2.5 phát lại có truy nguồn và G03 hồ sơ hạn chế. Mã nằm trên chuỗi nhánh/PR đang chờ đồng đội review và merge; main chưa tự được cập nhật chỉ vì CI đạt.
+Bản ứng viên **0.1.0-rc.1** có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát. Giai đoạn 7 bổ sung công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. Mã nằm trên chuỗi PR chờ review/merge; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
 
-Hướng dẫn: [giai đoạn 4 — gói](docs/PHASE-4.md), [giai đoạn 5 — G02](docs/PHASE-5.md), [giai đoạn 6 — G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml). Giai đoạn 7 còn nghiệm thu phát hành, backup/restore, giấy phép và chuẩn bị demo tổng thể.
+Bắt đầu: [cài từ source](docs/INSTALL.md), [người dùng](docs/USER-GUIDE.md), [demo xuyên suốt](docs/DEMO-SCRIPT.md), [backup/restore](docs/BACKUP-RESTORE.md), [giới hạn/bảo mật](SECURITY.md). Kỹ thuật: [giai đoạn 7](docs/PHASE-7.md), [gói v1/v2 và cách tạo gói](docs/PHASE-4.md), [G02](docs/PHASE-5.md), [G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml).
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -21,6 +21,10 @@ pnpm demo:verify:phase4
 pnpm demo:verify:phase5
 pnpm demo:verify:phase6
 pnpm test:e2e
+pnpm demo:verify:phase7
+pnpm source:verify
+pnpm legal:audit
+pnpm release:prepare
 ```
 
 ## Mục tiêu
@@ -68,9 +72,9 @@ Mỗi pull request cần nêu thay đổi, cách kiểm tra và giới hạn cò
 
 ## Nguồn gốc và giấy phép
 
-Giấy phép phát hành sẽ được chốt và bổ sung trước bản phát hành đầu tiên sau khi rà soát các thành phần kế thừa/phụ thuộc. Dự án hiện chưa công bố giấy phép cho mã nguồn mới.
+Mã và tài liệu mới dùng [Apache-2.0](LICENSE). Xem [NOTICE](NOTICE), [thành phần bên ngoài](THIRD_PARTY_NOTICES.md) và [rà soát nguồn gốc](docs/PROVENANCE.md). Phụ thuộc giữ giấy phép riêng; source archive không phân phối image hoặc binary bên thứ ba.
 
-Nếu sử dụng mã từ [Eco-Track 2025](https://github.com/SIU-Sirocco-2025/Eco-Track), đội sẽ ghi rõ nguồn gốc, giữ thông báo tác giả và tuân thủ giấy phép của phần được sử dụng.
+Lịch sử source hiện tại không nhập cây mã ứng dụng Eco-Track. Nếu dùng mã ngoài về sau, ghi nguồn/version/phạm vi sửa và giữ giấy phép tương ứng trước khi merge. Release candidate ghi source SHA, version, image digest và bằng chứng tự động; không thay nghiệm thu/review của người thật.
 
 ## Dữ liệu demo
 

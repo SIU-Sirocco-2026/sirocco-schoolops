@@ -260,7 +260,9 @@ function App() {
                 ? "Sự cố cơ sở vật chất"
                 : mode === "packs"
                   ? "Gói nghiệp vụ"
-                  : "Nhiệm vụ nền tảng"}
+                  : mode === "safety"
+                    ? "An toàn hạn chế"
+                    : "Nhiệm vụ nền tảng"}
           </span>
           <span className="env-badge">
             <span className="small-dot" />

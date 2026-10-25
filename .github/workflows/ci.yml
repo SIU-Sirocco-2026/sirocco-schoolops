@@ -9,9 +9,12 @@ permissions:
 jobs:
   foundation:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -19,6 +22,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm test && pnpm build
+      - run: pnpm source:verify
       - run: pnpm demo:init
       - name: Pull service images with bounded retry
         run: |
@@ -39,6 +43,13 @@ jobs:
       - run: pnpm demo:verify:phase6
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm demo:verify:phase7
+      - run: pnpm legal:audit
+      - run: pnpm release:prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: schoolops-release-candidate
+          path: test-results/release/
       - uses: actions/upload-artifact@v4
         if: always()
         with:

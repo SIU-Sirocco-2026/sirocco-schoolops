@@ -13,7 +13,7 @@
     "test": "pnpm -r --if-present test && node --test scripts/test/*.test.mjs",
     "test:e2e": "playwright test",
     "demo:init": "node scripts/init.mjs",
-    "demo:up": "docker compose up -d --build --wait --wait-timeout 300",
+    "demo:up": "node scripts/up.mjs",
     "demo:down": "docker compose down",
     "demo:logs": "docker compose logs --tail 100",
     "demo:verify": "node scripts/verify.mjs",
@@ -32,6 +32,8 @@
     "backup:create": "node scripts/backup.mjs create",
     "backup:restore": "node scripts/backup.mjs restore",
     "demo:verify:phase7": "node scripts/verify-phase7.mjs",
+    "source:verify": "node scripts/verify-source.mjs",
+    "release:prepare": "node scripts/release.mjs",
     "legal:audit": "node scripts/license-audit.mjs"
   },
   "devDependencies": {
