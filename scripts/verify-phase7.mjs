@@ -240,7 +240,7 @@ try {
           "environment",
           `/g02/episodes/${episode.id}/lineage`,
         );
-        assert.equal(lineage.item.caseId, episode.caseId);
+        assert.equal(lineage.episode.caseId, episode.caseId);
         assert.ok(JSON.stringify(lineage).includes(episode.id));
       }
       for (const [user, prefix] of [
