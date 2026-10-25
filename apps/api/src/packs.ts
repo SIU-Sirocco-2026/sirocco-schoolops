@@ -119,6 +119,19 @@ export function canonical(value: unknown): string {
 }
 export const packChecksum = (pack: BusinessPack) =>
   createHash("sha256").update(canonical(pack)).digest("hex");
+export function normalizePackLines(input: unknown): unknown {
+  if (
+    input &&
+    typeof input === "object" &&
+    !Array.isArray(input) &&
+    typeof (input as BusinessPack).workflow === "string"
+  )
+    return {
+      ...input,
+      workflow: (input as BusinessPack).workflow.replace(/\r\n?/g, "\n"),
+    };
+  return input;
+}
 export function validatePayload(
   schema: Record<string, unknown>,
   payload: unknown,
@@ -143,7 +156,7 @@ export async function readPack(directory: string): Promise<BusinessPack> {
   return {
     manifest: JSON.parse(files[0]!),
     schema: JSON.parse(files[1]!),
-    workflow: files[2]!,
+    workflow: files[2]!.replace(/\r\n?/g, "\n"),
     evidence: JSON.parse(files[3]!),
     seed: JSON.parse(files[4]!),
     labels: JSON.parse(files[5]!),
@@ -410,7 +423,7 @@ export async function installPack(
   actor: string | null,
   bootstrapDefinition?: string,
 ) {
-  const result = await validatePack(input);
+  const result = await validatePack(normalizePackLines(input));
   if (!result.valid) {
     await attempt(pool, actor, input, "validation_failed", result.errors);
     throw new HttpError(400, "INVALID_PACK", result.errors.join("; "));
@@ -430,7 +443,18 @@ export async function installPack(
       )
     ).rows[0];
     if (old) {
-      if (old.checksum !== hash)
+      if (packChecksum(old.bundle) !== old.checksum)
+        throw new HttpError(
+          409,
+          "PACK_INTEGRITY",
+          "Checksum/nội dung gói đã lưu không hợp lệ.",
+        );
+      // Legacy Windows revisions retain their original bytes/checksum/definition.
+      // XML newline normalization is the only tolerated representation difference.
+      if (
+        old.checksum !== hash &&
+        packChecksum(normalizePackLines(old.bundle) as BusinessPack) !== hash
+      )
         throw new HttpError(
           409,
           "IMMUTABLE_VERSION",
@@ -577,7 +601,7 @@ export function packsRouter(pool: pg.Pool, workflow: Flowable) {
     res.json({ items: revisions.rows, events: events.rows });
   });
   router.post("/validate", async (req, res) => {
-    const result = await validatePack(req.body);
+    const result = await validatePack(normalizePackLines(req.body));
     await attempt(
       pool,
       res.locals.principal.id,

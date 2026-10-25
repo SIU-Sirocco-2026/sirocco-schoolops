@@ -46,7 +46,7 @@ async function run() {
     body = {
       manifest: JSON.parse(files[0]),
       schema: JSON.parse(files[1]),
-      workflow: files[2],
+      workflow: files[2].replace(/\r\n?/g, "\n"),
       evidence: JSON.parse(files[3]),
       seed: JSON.parse(files[4]),
       labels: JSON.parse(files[5]),
