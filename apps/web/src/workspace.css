@@ -16,6 +16,9 @@
   --green-dark: #173f30;
   --line: #dce4dc;
   --soft: #edf3ed;
+  --surface-radius: 14px;
+  --control-radius: 8px;
+  --control-border: #7b9186;
 }
 * {
   box-sizing: border-box;
@@ -124,6 +127,12 @@ pre {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100dvh;
+  padding: 12px;
+  gap: 16px;
+  background:
+    radial-gradient(ellipse at 5% 0%, #d4e4da 0%, transparent 46%),
+    radial-gradient(ellipse at 100% 100%, #dfe8e3 0%, transparent 50%),
+    #edf2ef;
 }
 .sidebar {
   background: #183f32;
@@ -132,9 +141,12 @@ pre {
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 0;
-  height: 100dvh;
+  top: 12px;
+  height: calc(100dvh - 24px);
   overflow-y: auto;
+  border: 1px solid #ffffff6b;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 #ffffff30, 0 12px 32px #173f3010;
 }
 .brand {
   display: flex;
@@ -205,7 +217,7 @@ pre {
   padding: 11px 12px;
   margin: 3px 0;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--control-radius);
   background: transparent;
   color: #edf4ef;
   text-align: left;
@@ -288,16 +300,41 @@ pre {
   min-width: 0;
 }
 .topbar {
-  height: 66px;
+  min-height: 62px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 0 34px;
-  border-bottom: 1px solid var(--line);
-  background: #fcfdfa;
+  padding: 8px 26px;
+  border: 1px solid #ffffff;
+  border-radius: var(--surface-radius);
+  background: #f9fcfa;
+  box-shadow: inset 0 1px 0 #ffffff, 0 5px 22px #173f3005;
   color: var(--muted);
   font-size: 12px;
+}
+.topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.appearance-control {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  color: var(--green);
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 550;
+}
+.appearance-control:hover,
+.appearance-control[aria-pressed="true"] {
+  background: var(--soft);
+}
+.appearance-control[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--green);
 }
 .slash {
   margin: 0 10px;
@@ -318,7 +355,7 @@ pre {
   background: #568265;
 }
 .page {
-  padding: 32px 34px 20px;
+  padding: 30px 26px 20px;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -359,7 +396,7 @@ pre {
   min-height: 44px;
   padding: 10px 16px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--control-radius);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.45;
@@ -374,7 +411,7 @@ pre {
   background: var(--green-dark);
 }
 .secondary {
-  border-color: #b6c5b9;
+  border-color: var(--control-border);
   background: #fff;
   color: #334e3d;
 }
@@ -397,8 +434,9 @@ pre {
 .panel {
   background: white;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: var(--surface-radius);
   min-width: 0;
+  box-shadow: 0 3px 14px #173f3005;
 }
 .section-heading {
   display: flex;
@@ -444,7 +482,7 @@ pre {
 .message {
   padding: 13px 16px;
   border: 1px solid;
-  border-radius: 5px;
+  border-radius: var(--control-radius);
   font-size: 14px;
   margin-bottom: 18px;
   overflow-wrap: anywhere;
@@ -517,7 +555,7 @@ pre {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   background: white;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: var(--surface-radius);
   margin-bottom: 24px;
   overflow: hidden;
 }
@@ -573,8 +611,8 @@ textarea {
   min-height: 44px;
   margin: 7px 0 16px;
   padding: 10px 12px;
-  border: 1px solid #85988a;
-  border-radius: 4px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
   background: white;
   color: var(--ink);
   font-size: 14px;
@@ -1260,6 +1298,7 @@ details summary {
 @media (max-width: 760px) {
   .workspace {
     display: block;
+    padding: 0;
   }
   .sidebar {
     height: auto;
@@ -1269,6 +1308,9 @@ details summary {
     gap: 14px 12px;
     padding: 18px 16px 12px;
     overflow: visible;
+    border: 0;
+    border-radius: 0 0 18px 18px;
+    box-shadow: inset 0 -1px 0 #ffffff40;
   }
   .brand {
     padding: 0;
@@ -1327,16 +1369,32 @@ details summary {
     font-size: 11px;
   }
   .topbar {
-    height: 44px;
-    padding: 0 16px;
+    min-height: 56px;
+    height: auto;
+    margin: 8px 12px 0;
+    padding: 5px 10px;
     gap: 8px;
     font-size: 11px;
   }
   .topbar > span:first-child {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    display: none;
   }
+  .topbar-tools { width: 100%; gap: 8px; justify-content: space-between; }
+  .appearance-control { padding: 8px; font-size: 11px; }
+  .logout-control { padding: 8px 0; font-size: 12px; }
+  .has-open-case .page-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .has-open-case .page { padding-top: 12px; }
+  .has-open-case .sidebar nav { display: none; }
+  .has-open-case .sidebar { gap: 0 12px; padding-top: 12px; padding-bottom: 12px; }
   .env-badge {
     font-size: 11px;
   }
@@ -1525,4 +1583,36 @@ details summary {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Frosted glass is a web effect. Reading surfaces and controls stay opaque. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .workspace:not(.solid-effects) .sidebar {
+    background: linear-gradient(160deg, #244f3fef, #14392ff5);
+    -webkit-backdrop-filter: blur(14px) saturate(110%);
+    backdrop-filter: blur(14px) saturate(110%);
+  }
+  .workspace:not(.solid-effects) .topbar {
+    background: #ffffffed;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .workspace .sidebar { background: #183f32 !important; }
+  .workspace .topbar { background: #f9fcfa !important; }
+  .workspace .sidebar, .workspace .topbar { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+@media (forced-colors: active) {
+  .workspace { background: Canvas; }
+  .workspace .sidebar, .workspace .topbar, .panel {
+    background: Canvas !important;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .sidebar :is(.brand, small, .nav-item, .nav-tools summary), .sidebar-footer strong { color: CanvasText; }
+  .sidebar .nav-item.active, .appearance-control[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -3px; }
 }

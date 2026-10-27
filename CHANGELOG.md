@@ -1,5 +1,11 @@
 # Changelog
 
+## Chưa phát hành — kính mờ và bố cục mobile
+
+- Tạo lớp kính mờ nhẹ cho điều hướng/thanh trên và đăng nhập; giữ nền hồ sơ, trường nhập và thông báo đặc, đồng bộ khoảng cách/bo góc và tương phản đường viền điều khiển.
+- Thu gọn phần đầu khi mở hồ sơ trên điện thoại, giữ heading ngữ nghĩa, focus và đường quay lại; chuyển đăng xuất lên thanh trên.
+- Thêm lựa chọn Giảm hiệu ứng được lưu trên trình duyệt, nền đặc khi không hỗ trợ blur và kiểm forced-colors/reduced-motion. Không thay đổi luật hoặc quyền nghiệp vụ.
+
 ## Chưa phát hành — phiên đăng nhập và tải hồ sơ
 
 - Phản hồi truy vấn danh sách cũ không còn tắt trạng thái tải hoặc đưa lỗi vào bộ lọc mới; bỏ kết quả sau khi rời màn hình. Refresh chờ danh sách không được mở lại hồ sơ đã rời.

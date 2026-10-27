@@ -57,6 +57,13 @@ function date(value: string) {
 
 function App() {
   const location = useWorkspaceLocation();
+  const [reduceEffects, setReduceEffects] = useState(() => {
+    try {
+      const preference = localStorage.getItem("schoolops-reduce-effects");
+      if (preference !== null) return preference === "true";
+    } catch { /* The interface also works when browser storage is unavailable. */ }
+    return window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
+  });
   const [user, setUser] = useState<User | null>(null);
   const mode = location.view ?? (user ? defaultView(user.roles) : "g01");
   const setMode = (view: View) => navigate(view);
@@ -167,7 +174,7 @@ function App() {
     (role) => role === "reporter" || role === "coordinator",
   );
   return (
-    <div className={`workspace ${!user ? "guest-workspace" : ""}`}>
+    <div className={`workspace ${!user ? "guest-workspace" : ""} ${user && location.caseId && ["g01", "environment", "safety"].includes(mode) ? "has-open-case" : ""} ${reduceEffects ? "solid-effects" : ""}`}>
       <a className="skip-link" href="#workspace">
         Đến nội dung chính
       </a>
@@ -271,10 +278,28 @@ function App() {
                     ? "An toàn hạn chế"
                     : "Nhiệm vụ nền tảng"}
           </span>
+          <div className="topbar-tools">
           <span className="env-badge">
             <span className="small-dot" />
             Môi trường demo
           </span>
+          <button
+            className="appearance-control"
+            aria-pressed={reduceEffects}
+            title="Dùng nền đặc để giảm hiệu ứng trong suốt"
+            onClick={() => {
+              const next = !reduceEffects;
+              setReduceEffects(next);
+              try { localStorage.setItem("schoolops-reduce-effects", String(next)); } catch { /* Session-only preference. */ }
+            }}
+          >
+            Giảm hiệu ứng
+          </button>
+          {user && <button
+            className="text-button logout-control"
+            onClick={() => void keycloak.logout({ redirectUri: window.location.origin })}
+          >Đăng xuất</button>}
+          </div>
         </header>
         <div className="page">
           <div className="page-heading">
@@ -315,16 +340,6 @@ function App() {
                   : "Báo sự cố, phối hợp xử lý và kiểm tra kết quả trong trường học."}
               </p>
             </div>
-            {user ? (
-              <button
-                className="button secondary"
-                onClick={() =>
-                  void keycloak.logout({ redirectUri: window.location.origin })
-                }
-              >
-                Đăng xuất
-              </button>
-            ) : null}
           </div>
           {error && (
             <div className="message error" role="alert">
