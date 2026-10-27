@@ -4,12 +4,12 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Tải đúng bản để thử
 
-[Bản thử v0.1.0-rc.2](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.2) nằm ở tag; chuỗi PR chưa merge vào `main`. Bản RC sẵn sàng cho đánh giá nội bộ, còn chờ người dùng mục tiêu xác nhận.
+[Nhánh thử giao diện mới](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/tree/feat/cai-tien-uiux) chứa đầy đủ ứng dụng và các sửa đổi UI/UX sau RC2. Clone đúng nhánh theo lệnh dưới; `main` hiện chỉ có README và chưa được merge mã ứng dụng.
 
-[PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) chứa bản sửa sau phản biện và vá hai dependency mà audit đã đánh dấu. Tag RC cũ giữ nguyên dependency cũ. RC2 đóng gói các thay đổi này; lấy tag dưới đây để thử. Để tái lập RC lịch sử, thay tag bằng `v0.1.0-rc.1`.
+Đây là bản để đội thử và ghi phản hồi, chưa phải release mới. Mã giao diện tại commit `82e7d21` đã qua 44 bài unit/tool, 11 bài browser và tích hợp nền tảng/G01 trên máy phát triển; kết quả đó chưa thay thế việc chạy thử trên máy của từng thành viên.
 
 ```powershell
-git clone --branch v0.1.0-rc.2 --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch feat/cai-tien-uiux --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
 pnpm install --frozen-lockfile
 pnpm demo:init
@@ -19,6 +19,10 @@ pnpm demo:verify
 ```
 
 Cần Git, Node 22.16.0, pnpm 11.25.0 và Docker chạy Linux containers. Mở `http://localhost:8088`; mật khẩu demo là `DEMO_PASSWORD` trong `.env` trên máy chạy. Đọc [cài đặt](docs/INSTALL.md) trước khi nâng cấp bản đã có dữ liệu. Trên nhánh tài liệu mới, các hướng dẫn đánh giá có thể mới hơn bản RC; kết quả của RC chỉ chứng minh commit được ghi trong release.
+
+Đăng nhập thử bằng `reporter`, `coordinator`, `technician`, `approver` theo [hướng dẫn vai trò](docs/USER-GUIDE.md). Mỗi bản cài riêng có database riêng; để cùng bàn giao một hồ sơ giữa các thành viên, dùng [một môi trường chung](docs/SHARED-EVALUATION.md).
+
+[Bản thử v0.1.0-rc.2](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/releases/tag/v0.1.0-rc.2) vẫn nằm ở tag, gồm các bản vá của [PR #19](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/19) và giao diện trước đợt chỉnh này. Muốn tái lập RC2, thay tên nhánh trong lệnh clone bằng `v0.1.0-rc.2`; tag RC1 cũng được giữ để tái lập lịch sử.
 
 ## Bài toán và người sử dụng
 

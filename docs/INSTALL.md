@@ -4,12 +4,11 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
-Các lệnh dưới lấy RC2 có bản vá dependency. Tag RC1 vẫn giữ source cũ; chỉ checkout `v0.1.0-rc.1` nếu cần tái lập bản lịch sử. Mã trên `main` còn chờ chuỗi PR review/merge.
+Các lệnh dưới lấy nhánh `feat/cai-tien-uiux` để đội thử giao diện mới. Nhánh chứa toàn bộ ứng dụng; `main` hiện chỉ có README và còn chờ chuỗi PR review/merge. Nếu cần tái lập bản đã đóng gói, thay tên nhánh trong lệnh clone bằng `v0.1.0-rc.2`; tag này giữ giao diện trước đợt chỉnh UI/UX.
 
 ```powershell
-git clone https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch feat/cai-tien-uiux --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
-git checkout v0.1.0-rc.2
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up
@@ -19,7 +18,7 @@ pnpm demo:verify
 
 Nếu dùng source archive, kiểm tra `SHA256SUMS` của release và giải nén vào thư mục mới nằm ngoài mọi Git checkout. Chạy `pnpm install --frozen-lockfile`, `pnpm demo:init`, `pnpm demo:up` và `pnpm demo:users`. Với archive không có Git metadata, kiểm tra `GET /api/health/ready` trả `ready` và `GET /api/config` có `sourceRevision` khớp tệp `SOURCE-REVISION`, version khớp release; sau đó thử UI theo user guide.
 
-Các bộ `demo:verify*`, `test:e2e`, `source:verify`, `security:audit`, `legal:audit`, backup/restore và đóng gói cần Git checkout đúng phiên bản để kiểm tra provenance. Clone tag theo các lệnh trên nếu cần chạy đầy đủ các bộ này; tệp `SOURCE-REVISION` trong archive không tự chứng minh cây source còn sạch. `pnpm test`, typecheck và build có thể chạy từ archive. `main` còn chờ chuỗi PR merge. Node được ghi trong `.nvmrc`, pnpm được cố định ở trường `packageManager` của `package.json`.
+Các bộ `demo:verify*`, `test:e2e`, `source:verify`, `security:audit`, `legal:audit`, backup/restore và đóng gói cần Git checkout đúng phiên bản để kiểm tra provenance. Clone nhánh hoặc tag cần kiểm chứng nếu muốn chạy đầy đủ các bộ này; tệp `SOURCE-REVISION` trong archive không tự chứng minh cây source còn sạch. `pnpm test`, typecheck và build có thể chạy từ archive. `main` còn chờ chuỗi PR merge. Node được ghi trong `.nvmrc`, pnpm được cố định ở trường `packageManager` của `package.json`.
 
 Nếu dùng Codex MSIX trên Windows và có helper khởi động riêng, chạy helper trước công việc Docker:
 
@@ -35,6 +34,8 @@ Windows/WSL2 và Ubuntu amd64 là các môi trường đã kiểm chứng. macOS
 Mở [SchoolOps](http://localhost:8088). Identity ở `http://localhost:8180`. Hai cổng chỉ bind loopback. `.env` và `infra/generated/` chứa secret local, được sinh mới và bị ignore; đọc `DEMO_PASSWORD` tại máy để đăng nhập, không gửi giá trị lên Issue/chat. `demo:init` giữ secret đã có; `demo:users` thêm/bind các tài khoản demo cần thiết, không đặt lại mật khẩu realm đang dùng. Không trộn `.env` mới với volume cũ.
 
 API tự chạy migration 1–8 có khóa khi khởi động, seed danh mục/vai trò và gói mặc định nếu chưa có; không ghi đè active revision sau restart. Chạy lại `demo:up` không xóa dữ liệu. `demo:down` dừng/xóa container/network và giữ volume. Không dùng `down -v` trên dữ liệu cần giữ. Sau nâng cấp source, backup bản hiện tại, đọc migration/giới hạn, rồi chạy `demo:up`; bản RC này chưa có migration hạ cấp.
+
+Để tạm dừng sau khi thử, chạy `docker compose stop` trong thư mục clone. Khi cần mở lại, chạy `pnpm demo:up`; dữ liệu cũ được giữ. Với lần cài mới trên máy khác, luôn chạy `demo:init` để sinh secret của chính máy đó.
 
 Kiểm tra sâu, chạy **tuần tự** trên demo riêng:
 
