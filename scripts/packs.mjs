@@ -7,7 +7,7 @@ const [command, arg, version] = process.argv.slice(2);
 const root = resolve(import.meta.dirname, "..");
 async function token() {
   if (process.env.SIROCCO_TOKEN) return process.env.SIROCCO_TOKEN;
-  const local = Object.fromEntries(
+  const credentials = Object.fromEntries(
     (await readFile(resolve(root, ".env"), "utf8"))
       .split(/\r?\n/)
       .filter((l) => l && !l.startsWith("#"))
@@ -21,7 +21,7 @@ async function token() {
         grant_type: "password",
         client_id: "schoolops-smoke",
         username: "admin",
-        password: local.DEMO_PASSWORD,
+        password: credentials.DEMO_PASSWORD,
       }),
     },
   );
