@@ -11,6 +11,47 @@ export class ApiError extends Error {
   }
 }
 
+type Session = {
+  token?: string;
+  updateToken: (validity: number) => Promise<boolean>;
+};
+
+export function authenticatedRequest(
+  getSession: () => Session,
+  transport: typeof fetch = fetch,
+) {
+  return async function request<T>(
+    path: string,
+    init: RequestInit = {},
+  ): Promise<T> {
+    let token: string;
+    try {
+      const session = getSession();
+      await session.updateToken(30);
+      if (!session.token) throw new Error("Missing session token");
+      token = session.token;
+    } catch {
+      throw new ApiError(
+        "Chưa xác minh được phiên đăng nhập. Hãy kiểm tra kết nối hoặc đăng xuất rồi đăng nhập lại.",
+        401,
+      );
+    }
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    if (init.body && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
+    let response: Response;
+    try {
+      response = await transport(path, { ...init, headers });
+    } catch {
+      throw new Error(
+        "Mất kết nối. Hãy làm mới hồ sơ để kiểm tra kết quả trước khi gửi lại thao tác.",
+      );
+    }
+    return decodeResponse<T>(response);
+  };
+}
+
 export async function decodeResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     if (response.status === 429) {

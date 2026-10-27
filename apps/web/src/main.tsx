@@ -8,7 +8,7 @@ import { Safety } from "./Safety.js";
 import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
-import { decodeResponse } from "./http.js";
+import { authenticatedRequest } from "./http.js";
 import {
   defaultView,
   navigate,
@@ -46,22 +46,7 @@ const statuses: Record<string, string> = {
 };
 let keycloak: Keycloak;
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  await keycloak.updateToken(30);
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${keycloak.token}`);
-  if (init.body && !headers.has("Content-Type"))
-    headers.set("Content-Type", "application/json");
-  let response: Response;
-  try {
-    response = await fetch(path, { ...init, headers });
-  } catch {
-    throw new Error(
-      "Mất kết nối. Hãy làm mới hồ sơ để kiểm tra kết quả trước khi gửi lại thao tác.",
-    );
-  }
-  return decodeResponse<T>(response);
-}
+const request = authenticatedRequest(() => keycloak);
 function date(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "short",

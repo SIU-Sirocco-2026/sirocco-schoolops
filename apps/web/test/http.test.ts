@@ -2,7 +2,85 @@
 // See LICENSE and NOTICE in the repository root.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ApiError, decodeResponse } from "../src/http.js";
+import { ApiError, authenticatedRequest, decodeResponse } from "../src/http.js";
+
+test("refresh failure gives sign-in guidance and never dispatches a mutation", async () => {
+  let calls = 0;
+  const request = authenticatedRequest(
+    () => ({
+      token: "expired-test-token",
+      updateToken: async () => {
+        throw undefined;
+      },
+    }),
+    async () => {
+      calls++;
+      return Response.json({});
+    },
+  );
+  await assert.rejects(
+    request("/api/g01/cases", { method: "POST", body: "{}" }),
+    (error: ApiError) =>
+      error instanceof ApiError &&
+      error.status === 401 &&
+      /đăng nhập lại/.test(error.message),
+  );
+  assert.equal(calls, 0);
+});
+
+test("a resolved refresh without a token cannot send Bearer undefined", async () => {
+  let calls = 0;
+  const request = authenticatedRequest(
+    () => ({ updateToken: async () => false }),
+    async () => {
+      calls++;
+      return Response.json({});
+    },
+  );
+  await assert.rejects(
+    request("/api/g01/cases"),
+    (error: ApiError) => error instanceof ApiError && error.status === 401,
+  );
+  assert.equal(calls, 0);
+});
+
+test("one valid request preserves body, idempotency key and file content type without automatic replay", async () => {
+  let refreshes = 0;
+  let calls = 0;
+  const data = new Uint8Array([1, 2, 3]);
+  const request = authenticatedRequest(
+    () => ({
+      token: "unit-test-token",
+      updateToken: async () => {
+        refreshes++;
+        return false;
+      },
+    }),
+    async (_url, init) => {
+      calls++;
+      const headers = new Headers(init?.headers);
+      assert.equal(headers.get("Authorization"), "Bearer unit-test-token");
+      assert.equal(headers.get("Content-Type"), "application/octet-stream");
+      assert.equal(headers.get("Idempotency-Key"), "unit-test-key");
+      assert.equal(init?.body, data);
+      return new Response("gateway error", { status: 502 });
+    },
+  );
+  await assert.rejects(
+    request("/api/g01/cases/id/evidence", {
+      method: "POST",
+      body: data,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Idempotency-Key": "unit-test-key",
+      },
+    }),
+    (error: ApiError) =>
+      error.status === 502 && /kiểm tra kết quả/.test(error.message),
+  );
+  assert.equal(refreshes, 1);
+  assert.equal(calls, 1);
+});
 test("HTML quota response provides wait/retry guidance without exposing markup", async () => {
   await assert.rejects(
     decodeResponse(

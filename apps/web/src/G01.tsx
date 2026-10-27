@@ -136,6 +136,7 @@ export function G01({
     [total, setTotal] = useState(0);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [detailError, setDetailError] = useState("");
+  const [listError, setListError] = useState("");
   const [status, setStatus] = useState(""),
     [q, setQ] = useState(""),
     [search, setSearch] = useState(""),
@@ -151,6 +152,8 @@ export function G01({
   const generation = useRef(0),
     detailGeneration = useRef(0),
     previousSelection = useRef(selected);
+  const currentSelection = useRef(selected);
+  currentSelection.current = selected;
   const listPanel = useRef<HTMLElement | null>(null),
     detailPanel = useRef<HTMLElement | null>(null),
     listHeading = useRef<HTMLHeadingElement | null>(null),
@@ -174,6 +177,8 @@ export function G01({
   }, [selected, detail?.item.id]);
   async function loadList() {
     const n = ++generation.current;
+    setLoading(true);
+    setListError("");
     const params = new URLSearchParams({
       page: String(page),
       mine: String(mine),
@@ -181,22 +186,33 @@ export function G01({
     });
     if (status) params.set("status", status);
     if (search) params.set("q", search);
-    const [list, report] = await Promise.all([
-      request<{ items: Case[]; total: number }>(`${basePath}/cases?${params}`),
-      request<{
-        open: number;
-        overdue: number;
-        completed: number;
-        total: number;
-      }>(`${basePath}/reports`),
-    ]);
-    if (n === generation.current) {
-      setSummary(report);
-      setItems(list.items);
-      setTotal(list.total);
+    try {
+      const [list, report] = await Promise.all([
+        request<{ items: Case[]; total: number }>(`${basePath}/cases?${params}`),
+        request<{
+          open: number;
+          overdue: number;
+          completed: number;
+          total: number;
+        }>(`${basePath}/reports`),
+      ]);
+      if (n === generation.current) {
+        setSummary(report);
+        setItems(list.items);
+        setTotal(list.total);
+      }
+    } catch (e) {
+      if (n === generation.current) {
+        setListError((e as Error).message);
+        throw e;
+      }
+    } finally {
+      if (n === generation.current) setLoading(false);
     }
   }
   async function loadDetail(id: string) {
+    // A refresh/action may still be awaiting the list after the user opens another case.
+    if (currentSelection.current !== id) return;
     const n = ++detailGeneration.current;
     try {
       const data = await request<Detail>(`${basePath}/cases/${id}`);
@@ -215,10 +231,8 @@ export function G01({
       .catch((e) => setError(e.message));
   }, []);
   useEffect(() => {
-    setLoading(true);
-    void loadList()
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    void loadList().catch(() => {});
+    return () => { generation.current++; };
   }, [status, search, mine, page, bucket]);
   useEffect(() => {
     setDetail(null);
@@ -245,14 +259,17 @@ export function G01({
     return () => clearInterval(timer);
   }, [selected, detail?.item.syncStatus]);
   async function refresh() {
+    const selection = selected;
     setError("");
     setNotice("");
     try {
       await loadList();
-      if (selected) await loadDetail(selected);
+      if (selection) await loadDetail(selection);
     } catch (e) {
-      setError((e as Error).message);
-      setDetail(null);
+      if (currentSelection.current === selection) {
+        setError((e as Error).message);
+        setDetail(null);
+      }
     }
   }
   async function create(event: React.FormEvent) {
@@ -393,9 +410,9 @@ export function G01({
           </button>
         )}
       </div>
-      {error && (
+      {(error || listError) && (
         <div role="alert" className="message error">
-          {error}
+          {error || listError}
         </div>
       )}
       {notice && (
@@ -501,6 +518,14 @@ export function G01({
           </div>
           {loading ? (
             <p className="loading">Đang tải hồ sơ…</p>
+          ) : listError ? (
+            <div className="empty">
+              <h3>Chưa tải được danh sách hồ sơ</h3>
+              <p>Kiểm tra thông báo lỗi rồi làm mới. Các bộ lọc của bạn vẫn được giữ.</p>
+              <button type="button" className="button secondary" onClick={() => void loadList().catch(() => {})}>
+                Thử tải lại danh sách
+              </button>
+            </div>
           ) : items.length === 0 ? (
             <div className="empty">
               <h3>

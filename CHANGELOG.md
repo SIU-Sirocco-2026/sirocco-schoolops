@@ -1,5 +1,11 @@
 # Changelog
 
+## Chưa phát hành — phiên đăng nhập và tải hồ sơ
+
+- Phản hồi truy vấn danh sách cũ không còn tắt trạng thái tải hoặc đưa lỗi vào bộ lọc mới; bỏ kết quả sau khi rời màn hình. Refresh chờ danh sách không được mở lại hồ sơ đã rời.
+- Hiển thị hướng dẫn kiểm kết nối/đăng nhập lại khi không làm mới được phiên; không gửi yêu cầu nghiệp vụ nếu thiếu token và không tự gửi lại mutation.
+- Bổ sung phép tái hiện browser với lỗi GET đến sai thứ tự và unit tests cho phiên hết hạn/thiếu token, giữ body và idempotency key.
+
 ## Chưa phát hành — môi trường thử độc lập
 
 - Cho phép chọn cổng web/Identity local cùng tên Compose riêng để các bản clone không dùng nhầm container và volume của nhau. Giữ cổng mặc định 8088/8180.
