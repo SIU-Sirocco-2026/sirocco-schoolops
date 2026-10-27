@@ -12,6 +12,7 @@ import {
   assertIntegration,
   assertBrowser,
   assertDependencyAudit,
+  browserManifest,
 } from "./release-gates.mjs";
 const hash = (data) => createHash("sha256").update(data).digest("hex");
 const source = sourceRevision();
@@ -49,7 +50,28 @@ assert.equal(restored.applicationReady, true);
 const browser = JSON.parse(
   await readFile(join(root, "test-results/browser-results.json"), "utf8"),
 );
-assertBrowser(browser, source, pkg.version);
+// Ask Playwright to collect the current source without running fixtures/actions.
+// Clear reporter environment overrides so listing cannot overwrite acceptance evidence.
+const collectedBrowser = JSON.parse(
+  run(
+    process.execPath,
+    [
+      join(root, "node_modules/@playwright/test/cli.js"),
+      "test",
+      "--list",
+      "--reporter=json",
+    ],
+    {
+      env: {
+        ...process.env,
+        PLAYWRIGHT_JSON_OUTPUT_FILE: "",
+        PLAYWRIGHT_JSON_OUTPUT_NAME: "",
+        PLAYWRIGHT_JSON_OUTPUT_DIR: "",
+      },
+    },
+  ),
+);
+assertBrowser(browser, source, pkg.version, browserManifest(collectedBrowser));
 const legalDir = join(root, "test-results/legal");
 const legal = JSON.parse(
   await readFile(join(legalDir, "dependency-inventory.json"), "utf8"),

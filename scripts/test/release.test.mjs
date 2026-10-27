@@ -6,6 +6,8 @@ import {
   assertIntegration,
   assertBrowser,
   assertDependencyAudit,
+  browserManifest,
+  requiredBrowserScenarios,
 } from "../release-gates.mjs";
 const source = "a".repeat(40),
   version = "0.1.0-rc.1";
@@ -80,33 +82,61 @@ test("release rejects interrupted, failed, duplicate or stale integration eviden
   }
 });
 test("release reads actual Playwright config metadata and rejects filtered, flaky or repeated scenarios", () => {
-  const counts = {
-    "environment.spec.ts": 1,
-    "foundation.spec.ts": 4,
-    "g01.spec.ts": 3,
-    "packs.spec.ts": 1,
-    "safety.spec.ts": 1,
-  };
   const report = {
     config: { metadata: provenance },
-    stats: { expected: 10, unexpected: 0, flaky: 0, skipped: 0 },
-    suites: Object.entries(counts).map(([file, n]) => ({
-      specs: Array.from({ length: n }, (_, i) => ({
-        file,
-        title: `scenario ${i}`,
-        tests: [{ projectName: "chromium", results: [{ status: "passed" }] }],
-      })),
-    })),
+    stats: {
+      expected: requiredBrowserScenarios.length,
+      unexpected: 0,
+      flaky: 0,
+      skipped: 0,
+    },
+    suites: [
+      {
+        specs: requiredBrowserScenarios.map(([file, title]) => ({
+          file,
+          title,
+          tests: [{ projectName: "chromium", results: [{ status: "passed" }] }],
+        })),
+      },
+    ],
   };
-  assertBrowser(report, source, version);
+  const expected = browserManifest(report);
+  assertBrowser(report, source, version, expected);
   for (const change of [
     (r) => (r.stats.flaky = 1),
-    (r) => r.suites.pop(),
+    (r) => r.suites[0].specs.pop(),
     (r) => (r.config.metadata.sourceDirty = true),
+    (r) => (r.config.metadata.runtimeRevisions.worker = "other-source"),
+    (r) => (r.stats.skipped = 1),
+    (r) => (r.stats.unexpected = 1),
+    (r) => (r.suites[0].specs[0].title = "different scenario, same file/count"),
+    (r) => (r.suites[0].specs[1] = r.suites[0].specs[0]),
     (r) => r.suites[0].specs[0].tests[0].results.push({ status: "passed" }),
+    (r) => (r.suites[0].specs[0].tests[0].results[0].status = "failed"),
   ]) {
     const r = structuredClone(report);
     change(r);
-    assert.throws(() => assertBrowser(r, source, version));
+    assert.throws(() => assertBrowser(r, source, version, expected));
   }
+  const expanded = structuredClone(report);
+  expanded.suites[0].specs.push({
+    file: "new-feature.spec.ts",
+    title: "additional acceptance",
+    tests: [{ projectName: "chromium", results: [{ status: "passed" }] }],
+  });
+  expanded.stats.expected++;
+  const currentSource = browserManifest(expanded);
+  assertBrowser(expanded, source, version, currentSource);
+  assert.throws(() => assertBrowser(report, source, version, currentSource));
+  const missingRequiredSource = structuredClone(report);
+  missingRequiredSource.suites[0].specs.pop();
+  missingRequiredSource.stats.expected--;
+  assert.throws(() =>
+    assertBrowser(
+      missingRequiredSource,
+      source,
+      version,
+      browserManifest(missingRequiredSource),
+    ),
+  );
 });
