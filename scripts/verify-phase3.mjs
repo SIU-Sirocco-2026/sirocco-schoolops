@@ -152,6 +152,7 @@ async function upload(
       Authorization: `Bearer ${tokens[user]}`,
       "Content-Type": "application/octet-stream",
       "X-File-Name": encodeURIComponent(filename),
+      "X-Task-Id": row.taskId,
       "Idempotency-Key": key,
     },
     body: data,

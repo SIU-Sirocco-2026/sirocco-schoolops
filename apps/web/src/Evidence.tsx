@@ -113,19 +113,26 @@ export function Evidence({
   async function upload(e: React.FormEvent) {
     e.preventDefault();
     if (!file || validationError || uploading.current) return;
+    if (!taskId) {
+      setError("Chưa xác định được vòng xử lý. Làm mới hồ sơ trước khi tải tệp.");
+      return;
+    }
     uploading.current = true;
     setBusy(true);
     setError("");
     setNotice("");
     try {
+      const bytes = await file.arrayBuffer();
+      if (!mounted.current) return;
       await request(`/api/${prefix}/cases/${caseId}/evidence`, {
         method: "POST",
         headers: {
           "Content-Type": "application/octet-stream",
           "X-File-Name": encodeURIComponent(file.name),
           "Idempotency-Key": key.current,
+          "X-Task-Id": taskId,
         },
-        body: await file.arrayBuffer(),
+        body: bytes,
       });
       if (!mounted.current) return;
       key.current = crypto.randomUUID();

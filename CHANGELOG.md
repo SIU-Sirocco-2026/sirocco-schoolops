@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — upload đúng vòng xử lý
+
+- Upload G01/G02/G03 bắt buộc `X-Task-Id` từ hồ sơ đang thao tác. Server kiểm task dưới khóa hồ sơ trước khi ghi object/file/event; POST tới muộn của vòng cũ nhận 409 thay vì trở thành bằng chứng vòng mới.
+- Replay giữ task gốc; cùng key nhưng khai báo task khác bị xung đột, không đổi nhãn bằng chứng. Thiếu task nhận 400. UI, client kiểm thử và OpenAPI được cập nhật cùng hợp đồng; client tự viết cần nâng cấp tương ứng.
+
 ## Chưa phát hành — kết quả tải bằng chứng
 
 - Xác nhận riêng khi server đã nhận tệp, sau đó đọc danh sách/quét độc lập; lỗi GET không làm người dùng hiểu rằng cần tải lại tệp vừa nhận. Có nút làm mới bằng chứng, giữ lỗi đọc riêng và không hiển thị trạng thái rỗng khi chưa đọc được dữ liệu.

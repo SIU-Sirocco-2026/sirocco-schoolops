@@ -169,6 +169,13 @@ export function evidenceRouter(
           "INVALID_UPLOAD",
           "Gửi tệp nhị phân với tên tệp và Idempotency-Key UUID.",
         );
+      const task = z.string().min(1).max(200).safeParse(req.headers["x-task-id"]);
+      if (!task.success)
+        throw new HttpError(
+          400,
+          "INVALID_UPLOAD_TASK",
+          "Cần X-Task-Id của vòng xử lý đang tải bằng chứng. Hãy làm mới hồ sơ.",
+        );
       let mime: string;
       try {
         mime = identifyFile(req.body, filename);
@@ -209,15 +216,21 @@ export function evidenceRouter(
           )
         ).rows[0];
         if (old) {
-          if (old.checksum !== hash || old.filename !== filename)
+          if (old.checksum !== hash || old.filename !== filename || old.task_id !== task.data)
             throw new HttpError(
               409,
               "IDEMPOTENCY_CONFLICT",
-              "Khóa tải tệp đã dùng với nội dung khác.",
+              "Khóa tải tệp đã dùng với nội dung hoặc vòng xử lý khác.",
             );
           await db.query("COMMIT");
           return res.json({ item: evidenceView(old) });
         }
+        if (row.task_id !== task.data)
+          throw new HttpError(
+            409,
+            "STALE_TASK",
+            "Vòng xử lý đã thay đổi. Hãy làm mới hồ sơ và kiểm tra tệp trước khi tải cho vòng hiện tại.",
+          );
         const mayUpload = canUploadCaseEvidence(user, row, teams);
         if (!mayUpload)
           throw new HttpError(

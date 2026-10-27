@@ -124,6 +124,7 @@ const action = async (role, name, fields = {}, expected = 200) => {
         Authorization: `Bearer ${tokens.technician}`,
         "Content-Type": "application/octet-stream",
         "X-File-Name": "ket-qua.txt",
+        "X-Task-Id": item.taskId,
         "Idempotency-Key": crypto.randomUUID(),
       },
       body: Buffer.from("Kết quả sửa chữa giả lập đã kiểm tra thiết bị."),

@@ -386,7 +386,7 @@ paths:
         "403": { description: Disabled membership }
         "404": { description: Missing case or no current case permission }
     post:
-      description: Raw binary upload. Reporter can upload while reporting/supplementing; assigned repairer while repairing. Case must be ready. PNG/JPEG/PDF/TXT signatures/extensions validated; files are quarantined until real ClamAV scan and promotion. Same case/uploader/key/content/filename returns existing evidence. Maximum 10 MiB.
+      description: Raw binary upload with mandatory X-Task-Id from the displayed case. Reporter can upload while reporting/supplementing; assigned repairer while repairing. Case must be ready. A new upload checks the exact task under the case lock before any object write. PNG/JPEG/PDF/TXT signatures/extensions validated; files are quarantined until real ClamAV scan and promotion. Same case/uploader/key/content/filename/task returns existing evidence in its original task, even after the case advances; changing the task on that key conflicts. Maximum 10 MiB.
       parameters:
         - in: header
           name: Idempotency-Key
@@ -397,6 +397,7 @@ paths:
           required: true
           schema: { type: string }
           description: Percent-encoded UTF-8 filename, no path separators or control characters; max 180 decoded characters
+        - $ref: "#/components/parameters/UploadTask"
       requestBody:
         required: true
         content:
@@ -410,8 +411,7 @@ paths:
         "200": { description: Idempotent replay of the existing evidence }
         "400":
           {
-            description: Invalid filename/type/content/key,
-            empty or malformed file,
+            description: "Invalid filename/type/content/key or empty/malformed file; INVALID_UPLOAD_TASK if X-Task-Id is missing or malformed",
           }
         "401": { description: Missing or invalid token }
         "403":
@@ -419,7 +419,7 @@ paths:
         "404": { description: Missing case or no current case permission }
         "409":
           {
-            description: Idempotency key already used for a different filename/content,
+            description: "STALE_TASK for a new upload to an earlier task; IDEMPOTENCY_CONFLICT for a key used with another filename/content/task",
           }
         "413": { description: File exceeds 10 MiB }
         "503":
@@ -660,7 +660,7 @@ paths:
         "403": { description: Missing officer role }
         "404": { description: Outside case scope }
     post:
-      description: Same binary upload headers/limits/idempotency/quarantine/scan as G01. Only the assigned officer in repair can upload; current membership and case scope checked.
+      description: Same binary upload headers/limits/idempotency/quarantine/scan as G01, including mandatory X-Task-Id and original-task replay. Only the assigned officer in repair can upload; current membership and case scope checked.
       parameters:
         - {
             in: header,
@@ -674,6 +674,7 @@ paths:
             required: true,
             schema: { type: string },
           }
+        - $ref: "#/components/parameters/UploadTask"
       requestBody:
         required: true
         content:
@@ -682,8 +683,10 @@ paths:
       responses:
         "201": { description: Quarantined evidence }
         "200": { description: Idempotent replay }
+        "400": { description: Invalid upload headers/file or INVALID_UPLOAD_TASK }
         "403": { description: Forbidden officer/step }
         "404": { description: Outside scope }
+        "409": { description: STALE_TASK or IDEMPOTENCY_CONFLICT }
         "413": { description: File exceeds 10 MiB }
   /api/g02/cases/{id}/evidence/{evidenceId}/download:
     parameters:
@@ -822,7 +825,7 @@ paths:
         "200": { description: items and canUpload }
         "404": { description: Outside case scope }
     post:
-      description: Same binary headers/10 MiB/idempotency/quarantine/scan as G01. Safety reporter at report/supplement or assigned safety repairer only; current G03 ACL required.
+      description: Same binary headers/10 MiB/idempotency/quarantine/scan as G01, including mandatory X-Task-Id and original-task replay. Safety reporter at report/supplement or assigned safety repairer only; current G03 ACL required.
       parameters:
         - {
             in: header,
@@ -836,6 +839,7 @@ paths:
             required: true,
             schema: { type: string },
           }
+        - $ref: "#/components/parameters/UploadTask"
       requestBody:
         required: true
         content:
@@ -844,8 +848,10 @@ paths:
       responses:
         "201": { description: Quarantined file }
         "200": { description: Authorized idempotent replay }
+        "400": { description: Invalid upload headers/file or INVALID_UPLOAD_TASK }
         "403": { description: Reader lacks upload permission at current step }
         "404": { description: Outside G03 scope }
+        "409": { description: STALE_TASK or IDEMPOTENCY_CONFLICT }
         "413": { description: File too large }
   /api/g03/cases/{id}/evidence/{evidenceId}/download:
     parameters:
@@ -886,6 +892,13 @@ paths:
           }
         "403": { description: Missing safety role }
 components:
+  parameters:
+    UploadTask:
+      in: header
+      name: X-Task-Id
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 200 }
+      description: Exact opaque taskId read from the case when the file was selected. Required for every upload including replay; an existing key must keep its original task. Readiness with a null task cannot accept a new file. Missing/malformed value returns 400; a new key with an obsolete task returns 409 after current case permission is checked.
   responses:
     CaseResult:
       description: Persisted case with server-computed available actions

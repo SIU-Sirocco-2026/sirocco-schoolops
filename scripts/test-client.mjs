@@ -125,6 +125,7 @@ export async function client() {
         Authorization: `Bearer ${tokens[user]}`,
         "Content-Type": "application/octet-stream",
         "X-File-Name": encodeURIComponent(filename),
+        "X-Task-Id": row.taskId,
         "Idempotency-Key": crypto.randomUUID(),
       },
       body: data,
