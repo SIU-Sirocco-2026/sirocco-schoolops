@@ -68,6 +68,8 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
   await expect(heading).toBeFocused();
   await expect(page).toHaveURL(/view=g01.*case=[a-f0-9-]{36}/);
   const link = page.url();
+  // Full-page capture otherwise paints sticky/fixed chrome at the form's old scroll offset.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: info.outputPath("03-case-desktop.png"),
     fullPage: true,
