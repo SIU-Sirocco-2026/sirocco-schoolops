@@ -10,16 +10,26 @@ export function parseLocalEnv(source) {
       const text = line.trim();
       if (!text || text.startsWith("#")) return [];
       const index = text.indexOf("=");
-      if (index < 1) throw new Error("Cấu hình .env cần có dạng TEN_BIEN=gia_tri.");
+      if (index < 1)
+        throw new Error("Cấu hình .env cần có dạng TEN_BIEN=gia_tri.");
       return [[text.slice(0, index).trim(), text.slice(index + 1)]];
     }),
   );
 }
 
-export function readLocalEnv(directory = new URL("../", import.meta.url), overrides = process.env) {
+export function readLocalEnv(
+  directory = new URL("../", import.meta.url),
+  overrides = process.env,
+) {
   let source = "";
   try {
-    source = readFileSync(join(directory instanceof URL ? fileURLToPath(directory) : directory, ".env"), "utf8");
+    source = readFileSync(
+      join(
+        directory instanceof URL ? fileURLToPath(directory) : directory,
+        ".env",
+      ),
+      "utf8",
+    );
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -27,8 +37,13 @@ export function readLocalEnv(directory = new URL("../", import.meta.url), overri
 }
 
 export function localUrls(env) {
-  if (env.COMPOSE_PROJECT_NAME !== undefined && !/^[a-z0-9][a-z0-9_-]*$/.test(env.COMPOSE_PROJECT_NAME))
-    throw new Error("COMPOSE_PROJECT_NAME chỉ dùng chữ thường, số, dấu gạch ngang và gạch dưới.");
+  if (
+    env.COMPOSE_PROJECT_NAME !== undefined &&
+    !/^[a-z0-9][a-z0-9_-]*$/.test(env.COMPOSE_PROJECT_NAME)
+  )
+    throw new Error(
+      "COMPOSE_PROJECT_NAME chỉ dùng chữ thường, số, dấu gạch ngang và gạch dưới.",
+    );
   function port(name, fallback) {
     const text = String(env[name] ?? fallback);
     if (!/^[1-9]\d{0,4}$/.test(text) || Number(text) > 65535)
