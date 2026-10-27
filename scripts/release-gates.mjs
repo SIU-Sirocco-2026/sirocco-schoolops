@@ -80,12 +80,104 @@ export function assertIntegration(report, name, source, version) {
     `Failed acceptance: ${name}`,
   );
 }
-export function assertBrowser(browser, source, version) {
+export const requiredBrowserScenarios = [
+  [
+    "environment.spec.ts",
+    "officer traces PM2.5 raw data and closes shared case with clean evidence on mobile",
+  ],
+  [
+    "foundation.spec.ts",
+    "browser → Identity → gateway → API → database → Flowable task → completion",
+  ],
+  [
+    "foundation.spec.ts",
+    "seeded coordinator identity has the expected application permissions",
+  ],
+  [
+    "foundation.spec.ts",
+    "seeded approver identity has the expected application permissions",
+  ],
+  [
+    "foundation.spec.ts",
+    "seeded admin identity has the expected application permissions",
+  ],
+  [
+    "g01.spec.ts",
+    "G01 four browser roles complete both return loops with timeline, deadline and immutable refs",
+  ],
+  [
+    "g01.spec.ts",
+    "technical admin cannot see G01 content or create cases through the UI",
+  ],
+  [
+    "g01.spec.ts",
+    "mobile quota errors retain the form and require an explicit retry with the same creation key",
+  ],
+  [
+    "packs.spec.ts",
+    "admin sees active and installed pack revisions and rejected validation errors",
+  ],
+  [
+    "safety.spec.ts",
+    "three safety roles complete a restricted case with shared UI, clean evidence, notification and access log",
+  ],
+  [
+    "uiux.spec.ts",
+    "Vietnamese sign-in, linked case, mobile back navigation and readable metadata",
+  ],
+];
+
+function collectBrowserSpecs(browser) {
+  const specs = [];
+  function collect(suite) {
+    specs.push(...(suite.specs || []));
+    for (const child of suite.suites || []) collect(child);
+  }
+  collect(browser);
+  return specs;
+}
+
+export function browserManifest(browser) {
+  assert.ok(!browser.errors?.length, "Browser collection contains errors");
+  const cases = collectBrowserSpecs(browser).map((spec) => {
+    assert.equal(
+      spec.tests.length,
+      1,
+      "One Chromium execution per scenario is required",
+    );
+    assert.equal(spec.tests[0].projectName, "chromium");
+    assert.ok(typeof spec.file === "string" && typeof spec.title === "string");
+    return JSON.stringify([
+      spec.file.replaceAll("\\", "/"),
+      spec.title,
+      "chromium",
+    ]);
+  });
+  assert.ok(cases.length > 0, "Browser scenario manifest is empty");
+  assert.equal(
+    new Set(cases).size,
+    cases.length,
+    "Duplicate browser scenario identity",
+  );
+  return cases.sort();
+}
+
+export function assertBrowser(browser, source, version, expectedCases) {
   assertProvenance(browser.config.metadata, source, version);
+  assert.ok(
+    Array.isArray(expectedCases) && expectedCases.length > 0,
+    "Collect browser scenarios from the current source before release",
+  );
+  assert.equal(new Set(expectedCases).size, expectedCases.length);
+  for (const [file, title] of requiredBrowserScenarios)
+    assert.ok(
+      expectedCases.includes(JSON.stringify([file, title, "chromium"])),
+      `Required browser scenario missing from source: ${file}: ${title}`,
+    );
   assert.equal(
     browser.stats.expected,
-    10,
-    "All ten browser scenarios are required",
+    expectedCases.length,
+    "Every current browser scenario must pass",
   );
   assert.ok(
     browser.stats.unexpected === 0 &&
@@ -93,34 +185,15 @@ export function assertBrowser(browser, source, version) {
       browser.stats.skipped === 0,
     "Browser acceptance must pass without flaky/skipped scenarios",
   );
-  const specs = [];
-  function collect(suite) {
-    specs.push(...(suite.specs || []));
-    for (const child of suite.suites || []) collect(child);
-  }
-  collect(browser);
-  assert.equal(
-    specs.length,
-    10,
-    "A filtered/repeated subset is not complete browser acceptance",
+  assert.deepEqual(
+    browserManifest(browser),
+    [...expectedCases].sort(),
+    "Filtered, renamed or repeated scenarios differ from current source",
   );
-  assert.equal(new Set(specs.map((s) => `${s.file}:${s.title}`)).size, 10);
-  const counts = {};
-  for (const spec of specs) {
-    const file = spec.file.split(/[\\/]/).at(-1);
-    counts[file] = (counts[file] || 0) + 1;
-    assert.equal(spec.tests.length, 1);
-    assert.equal(spec.tests[0].projectName, "chromium");
+  for (const spec of collectBrowserSpecs(browser)) {
     assert.deepEqual(
       spec.tests[0].results.map((r) => r.status),
       ["passed"],
     );
   }
-  assert.deepEqual(counts, {
-    "environment.spec.ts": 1,
-    "foundation.spec.ts": 4,
-    "g01.spec.ts": 3,
-    "packs.spec.ts": 1,
-    "safety.spec.ts": 1,
-  });
 }
