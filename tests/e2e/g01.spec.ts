@@ -21,11 +21,19 @@ async function login(page: Page, username: string) {
   await page
     .getByRole("button", { name: /Sign In|Đăng nhập/, exact: true })
     .click();
+  if (username === "admin") {
+    await expect(page.getByRole("heading", { name: "Gói nghiệp vụ", level: 1 })).toBeVisible();
+    await page.getByRole("button", { name: "Sự cố cơ sở vật chất", exact: true }).click();
+  }
   await expect(
     page.getByRole("heading", { name: "Sự cố cơ sở vật chất", exact: true }),
   ).toBeVisible();
 }
 async function open(page: Page, title: string) {
+  const back = page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true });
+  if (await back.isVisible()) await back.click();
+  const mine = page.getByLabel("Công việc của tôi", { exact: true });
+  if (await mine.isChecked()) await mine.uncheck();
   await page.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await page.getByRole("button").filter({ hasText: title }).click();
@@ -160,9 +168,9 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   await c.getByRole("button", { name: "Giao xử lý", exact: true }).click();
   await state(c, "Chờ nhận việc");
   await login(t, "technician");
-  await open(t, title);
-  await t.getByLabel("Công việc của tôi", { exact: true }).check();
+  await expect(t.getByLabel("Công việc của tôi", { exact: true })).toBeChecked();
   await expect(t.getByRole("button").filter({ hasText: title })).toBeVisible();
+  await open(t, title);
   await t.getByRole("button", { name: "Nhận xử lý", exact: true }).click();
   await state(t, "Đang xử lý");
   await t

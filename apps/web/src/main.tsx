@@ -3,12 +3,18 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
-import "./style.css";
+import "./workspace.css";
 import { Safety } from "./Safety.js";
 import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
 import { decodeResponse } from "./http.js";
+import {
+  defaultView,
+  navigate,
+  useWorkspaceLocation,
+  type View,
+} from "./workspace-state.js";
 
 type User = { id: string; username: string; name: string; roles: string[] };
 type Task = {
@@ -65,10 +71,10 @@ function date(value: string) {
 }
 
 function App() {
-  const [mode, setMode] = useState<
-    "g01" | "foundation" | "packs" | "environment" | "safety"
-  >("g01");
+  const location = useWorkspaceLocation();
   const [user, setUser] = useState<User | null>(null);
+  const mode = location.view ?? (user ? defaultView(user.roles) : "g01");
+  const setMode = (view: View) => navigate(view);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -79,6 +85,10 @@ function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [operationKey, setOperationKey] = useState(() => crypto.randomUUID());
   const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (user && !location.view)
+      navigate(defaultView(user.roles), location.caseId, true);
+  }, [user, location.view]);
   async function refresh() {
     setRefreshing(true);
     try {
@@ -157,7 +167,7 @@ function App() {
       await request(`/api/foundation/tasks/${task.id}/complete`, {
         method: "POST",
       });
-      setNotice("Đã hoàn tất nhiệm vụ trên workflow engine và lưu lịch sử.");
+      setNotice("Đã hoàn tất nhiệm vụ và lưu lịch sử xử lý.");
       await refresh();
     } catch (error) {
       setError(
@@ -172,43 +182,36 @@ function App() {
     (role) => role === "reporter" || role === "coordinator",
   );
   return (
-    <div className="workspace">
+    <div className={`workspace ${!user ? "guest-workspace" : ""}`}>
+      <a className="skip-link" href="#workspace">
+        Đến nội dung chính
+      </a>
       <aside className="sidebar">
         <a className="brand" href="/" aria-label="SchoolOps trang chủ">
-          <span className="brand-symbol">
-            S<span>·</span>
-          </span>
+          <span className="brand-symbol">S</span>
           <span>
-            SchoolOps<small>by Sirocco</small>
+            SchoolOps<small>SIROCCO</small>
           </span>
         </a>
         <div className="workspace-label">
           <span className="school-icon">SIU</span>
           <span>
-            Trường học demo<small>Môi trường phát triển</small>
+            Trường học demo<small>Vận hành nội bộ</small>
           </span>
         </div>
-        <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
+        <div className="nav-label">Không gian làm việc</div>
         <nav aria-label="Điều hướng">
           <button
             className={`nav-item ${mode === "g01" ? "active" : ""}`}
+            aria-current={mode === "g01" ? "page" : undefined}
             onClick={() => setMode("g01")}
           >
             Sự cố cơ sở vật chất
           </button>
-          <button
-            className={`nav-item ${mode === "foundation" ? "active" : ""}`}
-            onClick={() => setMode("foundation")}
-          >
-            <span className="nav-square" />
-            Nhiệm vụ nền tảng
-            <span className="count">
-              {tasks.filter((t) => t.status !== "completed").length}
-            </span>
-          </button>
           {user?.roles.includes("admin") && (
             <button
               className={`nav-item ${mode === "packs" ? "active" : ""}`}
+              aria-current={mode === "packs" ? "page" : undefined}
               onClick={() => setMode("packs")}
             >
               Gói nghiệp vụ
@@ -217,6 +220,7 @@ function App() {
           {user?.roles.includes("environment_officer") && (
             <button
               className={`nav-item ${mode === "environment" ? "active" : ""}`}
+              aria-current={mode === "environment" ? "page" : undefined}
               onClick={() => setMode("environment")}
             >
               Môi trường PM2.5
@@ -227,18 +231,34 @@ function App() {
           ) && (
             <button
               className={`nav-item ${mode === "safety" ? "active" : ""}`}
+              aria-current={mode === "safety" ? "page" : undefined}
               onClick={() => setMode("safety")}
             >
               An toàn hạn chế
             </button>
           )}
+          {user && (
+            <details
+              className="nav-tools"
+              open={mode === "foundation" || undefined}
+            >
+              <summary>Công cụ kiểm tra</summary>
+              <button
+                className={`nav-item ${mode === "foundation" ? "active" : ""}`}
+                aria-current={mode === "foundation" ? "page" : undefined}
+                onClick={() => setMode("foundation")}
+              >
+                Nhiệm vụ nền tảng{" "}
+                <span className="count">
+                  {tasks.filter((t) => t.status !== "completed").length}
+                </span>
+              </button>
+            </details>
+          )}
         </nav>
         <div className="sidebar-note">
-          <span className="small-dot" />
           <strong>Phối hợp xử lý sự cố</strong>
-          <p>
-            Gửi báo hỏng, theo dõi người phụ trách và xem kết quả nghiệm thu.
-          </p>
+          <p>Từ phản ánh ban đầu đến kết quả đã nghiệm thu.</p>
         </div>
         <div className="sidebar-footer">
           <span className="avatar">{user?.name.charAt(0) || "S"}</span>
@@ -252,7 +272,7 @@ function App() {
           </div>
         </div>
       </aside>
-      <main id="workspace">
+      <main id="workspace" tabIndex={-1}>
         <header className="topbar">
           <span>
             SchoolOps <span className="slash">/</span>{" "}
@@ -274,7 +294,9 @@ function App() {
         <div className="page">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">VẬN HÀNH TRƯỜNG HỌC</div>
+              <div className="eyebrow">
+                {user ? "Vận hành trường học" : "SchoolOps / Đăng nhập"}
+              </div>
               <h1>
                 {user
                   ? mode === "safety"
@@ -286,12 +308,26 @@ function App() {
                         : mode === "packs"
                           ? "Gói nghiệp vụ"
                           : "Công việc của tôi"
-                  : "Một nơi để phối hợp xử lý."}
+                  : "Vận hành trường học"}
               </h1>
               <p className="intro">
                 {user
-                  ? "Theo dõi hồ sơ và xử lý công việc theo vai trò của bạn."
-                  : "Đăng nhập để báo sự cố, phối hợp xử lý và nghiệm thu."}
+                  ? mode === "g01"
+                    ? user.roles.includes("technician")
+                      ? "Nhận việc được giao, cập nhật kết quả và gửi nghiệm thu."
+                      : user.roles.includes("approver")
+                        ? "Kiểm tra kết quả xử lý và bằng chứng trước khi nghiệm thu."
+                        : user.roles.includes("coordinator")
+                          ? "Xác minh phản ánh, giao người xử lý và theo dõi hạn hoàn thành."
+                          : "Báo sự cố và theo dõi tiến độ trên cùng một mã hồ sơ."
+                    : mode === "safety"
+                      ? "Theo dõi phản ánh trong phạm vi bạn được cấp quyền."
+                      : mode === "environment"
+                        ? "Xác minh cảnh báo và theo dõi công việc xử lý."
+                        : mode === "packs"
+                          ? "Kiểm tra phiên bản đang dùng và lịch sử thay đổi."
+                          : "Kiểm tra kết nối và quy trình bằng nhiệm vụ demo."
+                  : "Báo sự cố, phối hợp xử lý và kiểm tra kết quả trong trường học."}
               </p>
             </div>
             {user ? (
@@ -321,27 +357,31 @@ function App() {
             </div>
           ) : !user ? (
             <section className="welcome panel">
-              <div className="welcome-mark">01</div>
               <div>
-                <span className="eyebrow">BƯỚC ĐẦU TIÊN</span>
-                <h2>Bắt đầu từ công việc của bạn.</h2>
+                <span className="welcome-kicker">
+                  Dành cho người báo, điều phối và kỹ thuật
+                </span>
+                <h2>Vào không gian làm việc</h2>
                 <p>
-                  Dùng tài khoản demo theo vai trò để báo sự cố, giao việc, xử
-                  lý và nghiệm thu.
+                  Đăng nhập bằng tài khoản được cấp. Hệ thống hiển thị hồ sơ và
+                  thao tác theo vai trò của bạn.
                 </p>
                 <button
                   className="button primary"
                   disabled={!ready}
                   onClick={() =>
-                    void keycloak.login({ redirectUri: window.location.origin })
+                    void keycloak.login({
+                      redirectUri: window.location.href.split("#")[0],
+                      locale: "vi",
+                    })
                   }
                 >
-                  Đăng nhập vào SchoolOps <span aria-hidden="true">↗</span>
+                  Đăng nhập vào SchoolOps <span aria-hidden="true">→</span>
                 </button>
                 {!ready && (
                   <button
                     className="button secondary"
-                    onClick={() => location.reload()}
+                    onClick={() => window.location.reload()}
                   >
                     Kết nối lại
                   </button>
@@ -349,13 +389,25 @@ function App() {
               </div>
               <div className="welcome-steps">
                 <div>
-                  <span>1</span>Đăng nhập theo vai trò
+                  <span>01</span>
+                  <div>
+                    <strong>Ghi nhận</strong>
+                    <p>Phản ánh sự cố, giữ mã để theo dõi.</p>
+                  </div>
                 </div>
                 <div>
-                  <span>2</span>Phối hợp xử lý
+                  <span>02</span>
+                  <div>
+                    <strong>Phối hợp</strong>
+                    <p>Giao việc, cập nhật kết quả và bằng chứng.</p>
+                  </div>
                 </div>
                 <div>
-                  <span>3</span>Nghiệm thu kết quả
+                  <span>03</span>
+                  <div>
+                    <strong>Nghiệm thu</strong>
+                    <p>Kiểm tra kết quả trước khi đóng hồ sơ.</p>
+                  </div>
                 </div>
               </div>
             </section>
@@ -366,7 +418,12 @@ function App() {
           ) : mode === "packs" ? (
             <Packs request={request} />
           ) : mode === "g01" ? (
-            <G01 request={request} />
+            <G01
+              request={request}
+              defaultMine={user.roles.some((r) =>
+                ["technician", "approver"].includes(r),
+              )}
+            />
           ) : (
             <>
               <div className="summary">
@@ -558,7 +615,7 @@ function App() {
           )}
           <footer className="page-footer">
             <span>Sirocco Core + SchoolOps</span>
-            <span>Dữ liệu giả lập · SchoolOps G01</span>
+            <span>Môi trường demo · Dữ liệu giả lập</span>
           </footer>
         </div>
       </main>

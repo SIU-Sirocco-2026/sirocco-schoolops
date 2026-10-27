@@ -21,6 +21,7 @@ async function login(page: Page, username: string) {
   await page
     .getByRole("button", { name: /Sign In|Đăng nhập/, exact: true })
     .click();
+  await page.getByText("Công cụ kiểm tra", { exact: true }).click();
   await page.getByRole("button", { name: /^Nhiệm vụ nền tảng/ }).click();
   await expect(
     page.getByRole("heading", { name: "Công việc của tôi", exact: true }),

@@ -113,10 +113,11 @@ const audience = {
     "access.token.claim": "true",
   },
 };
+const { realmUi } = await import("./realm-ui.mjs");
 const realm = {
   realm: "sirocco",
   enabled: true,
-  displayName: "Sirocco · SchoolOps",
+  ...realmUi,
   sslRequired: "none",
   registrationAllowed: false,
   resetPasswordAllowed: false,

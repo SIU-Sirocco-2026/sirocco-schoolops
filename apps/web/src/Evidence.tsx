@@ -2,6 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./http.js";
+import { filePolicy } from "./file-policy.js";
 
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 type FileEvidence = {
@@ -23,7 +24,7 @@ const states: Record<string, string> = {
   pending: "Chờ quét",
   clean: "Đã quét sạch",
   rejected: "Bị từ chối",
-  error: "Lỗi quét — sẽ tự thử lại",
+  error: "Chưa quét được · sẽ tự thử lại",
 };
 export function Evidence({
   request,
@@ -49,6 +50,8 @@ export function Evidence({
     input = useRef<HTMLInputElement>(null);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const mimeTypesKey = JSON.stringify(policy.mimeTypes);
+  const allowed = filePolicy(policy.mimeTypes);
+  const validationError = file ? allowed.validate(file) : null;
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -96,7 +99,7 @@ export function Evidence({
   }, [caseId, taskId, prefix, refreshIndex, policy.minClean, mimeTypesKey]);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || validationError) return;
     setBusy(true);
     setError("");
     try {
@@ -142,12 +145,9 @@ export function Evidence({
   return (
     <section className="evidence-section" aria-label="Bằng chứng hồ sơ">
       <h3>Bằng chứng</h3>
-      <p>
-        {policy.mimeTypes?.every((m) => m.startsWith("image/"))
-          ? "Phiên bản gói này yêu cầu ảnh PNG/JPEG sạch. "
-          : ""}
-        Chỉ tệp đã quét sạch được tải xuống. Mỗi lần gửi nghiệm thu cần bằng
-        chứng sạch của lần xử lý đó.
+      <p className="section-help">
+        Mỗi lần hoàn tất xử lý cần bằng chứng của chính lần đó. Tệp được
+        kiểm tra trước khi sử dụng.
       </p>
       {error && (
         <p role="alert" className="message error">
@@ -155,28 +155,64 @@ export function Evidence({
         </p>
       )}
       {canUpload && (
-        <form onSubmit={(e) => void upload(e)}>
+        <form
+          className="upload-form"
+          aria-busy={busy}
+          onSubmit={(e) => void upload(e)}
+        >
           <label htmlFor={`evidence-${caseId}`}>
             Ảnh hoặc tài liệu bằng chứng (tối đa 10 MB)
           </label>
+          <div className="file-picker">
           <input
+            className="file-input"
+            tabIndex={-1}
             ref={input}
             id={`evidence-${caseId}`}
             type="file"
-            accept=".png,.jpg,.jpeg,.pdf,.txt"
+            accept={allowed.accept}
+            aria-describedby={`evidence-help-${caseId}${validationError ? ` evidence-error-${caseId}` : ""}`}
+            aria-invalid={!!validationError || undefined}
             required
             disabled={busy}
             onChange={(e) => {
               setFile(e.target.files?.[0] || null);
+              setError("");
               key.current = crypto.randomUUID();
             }}
           />
-          <button className="button secondary" disabled={busy || !file}>
+          <button type="button" className="button secondary file-picker-button" disabled={busy} onClick={() => input.current?.click()}>Chọn tệp</button>
+          <span className="file-name" aria-live="polite">{file?.name || "Chưa chọn tệp"}</span>
+          </div>
+          <p className="field-help" id={`evidence-help-${caseId}`}>
+            Nhận {allowed.label}. Tối đa 10 MB mỗi tệp.
+          </p>
+          {validationError && (
+            <p
+              className="field-error"
+              role="alert"
+              id={`evidence-error-${caseId}`}
+            >
+              {validationError}
+            </p>
+          )}
+          <button
+            className="button secondary"
+            disabled={busy || !file || !!validationError}
+          >
             {busy ? "Đang tải tệp…" : "Tải bằng chứng"}
           </button>
         </form>
       )}
       {!files.length && <p>Chưa có bằng chứng.</p>}
+      {files.some(
+        (f) =>
+          f.taskId === taskId && ["pending", "error"].includes(f.scanStatus),
+      ) && (
+        <p className="scan-progress" role="status">
+          Đang kiểm tra tệp. Trang sẽ tự cập nhật; bạn không cần tải lại.
+        </p>
+      )}
       <ul className="evidence-list">
         {files.map((f) => (
           <li key={f.id}>
@@ -185,7 +221,8 @@ export function Evidence({
               {states[f.scanStatus]}
             </span>
             <small>
-              {Math.ceil(f.size / 1024)} KB · Bước {f.step}
+              {Math.ceil(f.size / 1024)} KB ·{" "}
+              {f.step === "repair" ? "Bằng chứng xử lý" : f.step}
               {f.taskId === taskId ? " · Lần xử lý hiện tại" : ""}
             </small>
             {f.scanMessage && f.scanStatus !== "clean" && (

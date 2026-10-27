@@ -94,6 +94,10 @@ async function logout() {
   ).toBeVisible();
 }
 async function open() {
+  const back = page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true });
+  if (await back.isVisible()) await back.click();
+  const mine = page.getByLabel("Công việc của tôi", { exact: true });
+  if (await mine.isChecked()) await mine.uncheck();
   await page.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await page.getByRole("button").filter({ hasText: title }).click();

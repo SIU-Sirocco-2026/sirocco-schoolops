@@ -2,6 +2,8 @@
 
 Đăng nhập ở `http://localhost:8088` với username bên dưới và mật khẩu local `DEMO_PASSWORD` trong `.env`. Tất cả là danh tính giả lập. Người khác vai trò có thể dùng trình duyệt/profile riêng; không chia sẻ token.
 
+Trên nhánh giao diện mới chưa phát hành, màn hình đăng nhập dùng tiếng Việt. Với stack đã có dữ liệu, chạy `pnpm demo:up` rồi `pnpm demo:users` để gắn theme và cập nhật phần trình bày; không cần tạo lại realm. Kỹ thuật viên và người nghiệm thu mở danh sách **Công việc của tôi**; cán bộ môi trường/an toàn mở đúng không gian tương ứng. Nhiệm vụ nền tảng nằm trong **Công cụ kiểm tra**.
+
 | Tài khoản | Việc có thể làm | Việc cần quan sát |
 | --- | --- | --- |
 | reporter | Tạo G01, bổ sung hồ sơ của mình, xem kết quả | Điền phòng/thiết bị/mô tả, giữ mã hồ sơ; không thấy action của điều phối |
@@ -25,6 +27,8 @@ G03: người báo tạo phản ánh vật cản hành lang giả lập, cán b�
 
 Các thẻ **Tất cả / Đang mở / Quá hạn / Hoàn thành** mở danh sách nguồn theo cùng quyền. Tổng giữa các vai trò có thể khác nhau. Khi đối soát, dùng cùng account, bộ lọc và thời điểm; quá hạn được tính theo hạn thực, không cộng vào tổng mở như một nhóm độc lập.
 
-Điện thoại: bộ nghiệm thu dùng viewport 390×844 cho báo/giao/nhận/upload/nghiệm thu. Cuộn đến phần tác vụ trong chi tiết hồ sơ. Khi lỗi `429`, chờ số giây được thông báo rồi thử lại; biểu mẫu được giữ. Khi mất kết nối hoặc lỗi dịch vụ, bấm **Làm mới hồ sơ** để kiểm tra kết quả trước khi gửi lại. `Chờ đối soát` là trạng thái cần chờ, không phải xác nhận thành công.
+Trên nhánh giao diện mới, mở hồ sơ sẽ thêm `view` và `case` vào địa chỉ. Có thể giữ liên kết, tải lại hoặc dùng nút Back của trình duyệt để trở về hồ sơ trước; liên kết vẫn yêu cầu đúng quyền. Trên điện thoại, **Về danh sách** đưa focus về tiêu đề danh sách. Bấm **Đến bước xử lý** để tới biểu mẫu tác vụ; phần **Cần bạn thực hiện / Tiến độ xử lý** cho biết bước đang chờ ai.
+
+Điện thoại: bộ kiểm thử dùng viewport 390×844 cho báo/giao/nhận/upload/nghiệm thu. Khi lỗi `429`, chờ số giây được thông báo rồi thử lại; biểu mẫu được giữ. Khi mất kết nối hoặc lỗi dịch vụ, bấm **Làm mới hồ sơ** để kiểm tra kết quả trước khi gửi lại. `Đang xác nhận` hoặc `Chờ đối soát` là trạng thái cần chờ, không phải xác nhận thành công. Chọn tệp sẽ hiện tên và lỗi định dạng/kích thước ngay trong biểu mẫu; API vẫn kiểm tra nội dung và scanner vẫn phải xác nhận tệp sạch.
 
 Sau khi thử, ghi phản hồi vào [checklist nghiệm thu theo vai trò](verification/role-feedback.md), kèm phiên bản/SHA và kết quả thực tế. Không ghi “đạt” cho vai trò chưa được người thật thử.

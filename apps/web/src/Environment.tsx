@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // See LICENSE and NOTICE in the repository root.
 import { useEffect, useState } from "react";
-import { G01 } from "./G01.js";
+import { G01, statusNames } from "./G01.js";
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 export function Environment({ request }: { request: Request }) {
   const [sources, setSources] = useState<any[]>([]),
@@ -84,7 +84,7 @@ export function Environment({ request }: { request: Request }) {
                 {e.conditionEndedAt
                   ? "Điều kiện đã phục hồi"
                   : "Đang có điều kiện cảnh báo"}{" "}
-                · Hồ sơ: {e.status}
+                · Hồ sơ: {statusNames[e.status] || e.status}
               </p>
               <button
                 className="button secondary"

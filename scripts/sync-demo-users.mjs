@@ -2,6 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { realmUi } from "./realm-ui.mjs";
 const env = Object.fromEntries(
   (await readFile(new URL("../.env", import.meta.url), "utf8"))
     .split(/\r?\n/)
@@ -29,18 +30,23 @@ const response = await fetch(
 if (!response.ok) throw Error("Không đăng nhập được admin Keycloak local");
 const token = (await response.json()).access_token;
 async function api(path, body, method = body ? "POST" : "GET") {
-  const r = await fetch(`http://localhost:8180/admin/realms/sirocco/${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const r = await fetch(
+    `http://localhost:8180/admin/realms/sirocco${path ? `/${path}` : ""}`,
+    {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  );
   if (!r.ok) throw Error(`Keycloak demo sync HTTP ${r.status}`);
   const text = await r.text();
   return text ? JSON.parse(text) : null;
 }
+await api("", realmUi, "PUT");
+console.log("SchoolOps login presentation ready (Vietnamese).");
 for (const user of realm.users.filter((u) =>
   [
     "environment",
@@ -81,4 +87,4 @@ for (const user of realm.users.filter((u) =>
   );
   console.log(`Demo user ready: ${user.username}`);
 }
-// Only adds known demo accounts; never reimports a realm or resets old credentials/volumes.
+// Updates presentation and adds known demo accounts; never reimports a realm or resets credentials/volumes.

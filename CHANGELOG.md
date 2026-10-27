@@ -1,5 +1,13 @@
 # Changelog
 
+## Chưa phát hành — giao diện làm việc
+
+- Sắp xếp không gian theo vai trò; chuyển nhiệm vụ nền tảng vào công cụ kiểm tra, giữ phần việc đang chờ và hướng dẫn bước tiếp theo trong hồ sơ.
+- Dùng liên kết có mã hồ sơ, hỗ trợ tải lại và lịch sử trình duyệt; trên màn hình nhỏ tách danh sách với chi tiết, trả focus khi quay lại.
+- Chỉnh bố cục, tương phản, kích thước thao tác và chọn tệp; kiểm tra định dạng/kích thước theo chính sách của từng phiên bản gói trước khi tải.
+- Việt hóa đăng nhập bằng theme kế thừa của Keycloak, đồng bộ cấu hình trình bày mà không tạo lại realm hoặc dữ liệu.
+- Thêm kiểm thử điều hướng, chính sách tệp, đăng nhập tiếng Việt và bố cục mobile. Bản này cần phản hồi người dùng thật; các tag RC đã phát hành giữ nguyên.
+
 ## 0.1.0-rc.2 — 2026-10-25
 
 - Dependency audit được lưu trong bằng chứng release và ràng buộc source sạch/lockfile; release notes được chọn theo phiên bản thay vì cố định RC1.

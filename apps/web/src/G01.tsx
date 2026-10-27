@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessLog } from "./Safety.js";
 import { Evidence } from "./Evidence.js";
+import {
+  caseLabels,
+  caseViews,
+  navigate,
+  useWorkspaceLocation,
+} from "./workspace-state.js";
 
 type Person = { id: string; name: string; roles: string[] };
 type Catalog = {
@@ -102,12 +108,18 @@ export function G01({
   request,
   prefix = "g01",
   initialCase = null,
+  defaultMine = false,
 }: {
   request: Request;
   prefix?: string;
   initialCase?: string | null;
+  defaultMine?: boolean;
 }) {
   const basePath = `/api/${prefix}`;
+  const labels =
+    caseLabels[prefix as keyof typeof caseLabels] || caseLabels.g01;
+  const route = useWorkspaceLocation();
+  const selected = route.view === caseViews[prefix] ? route.caseId : null;
   useEffect(() => {
     if (initialCase) chooseCase(initialCase);
   }, [initialCase]);
@@ -122,12 +134,12 @@ export function G01({
   const [catalog, setCatalog] = useState<Catalog | null>(null),
     [items, setItems] = useState<Case[]>([]),
     [total, setTotal] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null),
-    [detail, setDetail] = useState<Detail | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [detailError, setDetailError] = useState("");
   const [status, setStatus] = useState(""),
     [q, setQ] = useState(""),
     [search, setSearch] = useState(""),
-    [mine, setMine] = useState(false),
+    [mine, setMine] = useState(defaultMine),
     [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false),
     [form, setForm] = useState(initial),
@@ -137,18 +149,22 @@ export function G01({
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const generation = useRef(0),
-    detailGeneration = useRef(0);
+    detailGeneration = useRef(0),
+    previousSelection = useRef(selected);
   const listPanel = useRef<HTMLElement | null>(null),
     detailPanel = useRef<HTMLElement | null>(null),
+    listHeading = useRef<HTMLHeadingElement | null>(null),
+    detailHeading = useRef<HTMLHeadingElement | null>(null),
     scrollRequested = useRef(false);
   function showDetail() {
+    detailHeading.current?.focus({ preventScroll: true });
     if (window.matchMedia("(max-width: 1100px)").matches)
       detailPanel.current?.scrollIntoView({ block: "start" });
   }
   function chooseCase(id: string) {
     if (detail?.item.id === id) showDetail();
     else scrollRequested.current = true;
-    setSelected(id);
+    navigate(caseViews[prefix]!, id);
   }
   useEffect(() => {
     if (scrollRequested.current && detail?.item.id === selected) {
@@ -182,8 +198,16 @@ export function G01({
   }
   async function loadDetail(id: string) {
     const n = ++detailGeneration.current;
-    const data = await request<Detail>(`${basePath}/cases/${id}`);
-    if (n === detailGeneration.current) setDetail(data);
+    try {
+      const data = await request<Detail>(`${basePath}/cases/${id}`);
+      if (n === detailGeneration.current) {
+        setDetail(data);
+        setDetailError("");
+      }
+    } catch (e) {
+      if (n === detailGeneration.current) setDetailError((e as Error).message);
+      throw e;
+    }
   }
   useEffect(() => {
     void request<Catalog>(`${basePath}/catalog`)
@@ -198,8 +222,12 @@ export function G01({
   }, [status, search, mine, page, bucket]);
   useEffect(() => {
     setDetail(null);
+    setDetailError("");
     setEvidenceReady(false);
-    if (selected) void loadDetail(selected).catch((e) => setError(e.message));
+    scrollRequested.current = !!selected;
+    if (selected) void loadDetail(selected).catch(() => {});
+    else if (previousSelection.current) listHeading.current?.focus({ preventScroll: true });
+    previousSelection.current = selected;
     return () => {
       detailGeneration.current++;
     };
@@ -291,8 +319,29 @@ export function G01({
     catalog?.people.find((p) => p.id === id)?.name ||
     detail?.timeline.find((e) => e.actorId === id)?.actorName ||
     (id ? "Tài khoản đã thay đổi quyền" : "Chưa giao");
+  const nextStep =
+    detail &&
+    (detail.item.syncStatus !== "ready"
+      ? "Đã nhận yêu cầu. Hệ thống đang xác nhận chuyển bước; bạn không cần gửi lại."
+      : detail.item.status === "closed"
+        ? "Hồ sơ đã hoàn tất. Kết quả và lịch sử được giữ tại đây."
+        : detail.item.actions.includes("assign")
+          ? "Chọn người xử lý, người nghiệm thu và hạn hoàn thành."
+          : detail.item.actions.includes("approve")
+            ? "Kiểm tra kết quả và bằng chứng, sau đó nghiệm thu hoặc trả lại xử lý."
+            : detail.item.actions.includes("resolve")
+              ? "Ghi kết quả ứng phó, tải bằng chứng và nêu lý do trước khi đóng hồ sơ."
+              : detail.item.actions.includes("submit")
+              ? "Cập nhật kết quả, tải bằng chứng của lần xử lý này rồi gửi nghiệm thu."
+              : detail.item.actions.includes("receive")
+                ? "Nhận công việc để bắt đầu cập nhật kết quả xử lý."
+                : detail.item.actions.includes("resubmit")
+                  ? "Bổ sung thông tin theo yêu cầu trong lịch sử, sau đó gửi lại."
+                  : detail.item.actions.length
+                    ? "Kiểm tra nội dung và chọn cách xử lý phù hợp."
+                    : `Đang chờ ${detail.item.status === "acceptance" ? name(detail.item.approverId) : ["assigned", "in_progress"].includes(detail.item.status) ? (detail.item.technicianId ? name(detail.item.technicianId) : catalog?.teams.find((t) => t.id === detail.item.teamId)?.name || "người được giao") : name(detail.item.coordinatorId)} thực hiện bước tiếp theo.`);
   return (
-    <div className="g01">
+    <div className={`g01 ${selected ? "has-selection" : ""}`}>
       {summary && (
         <section className="report-summary" aria-label="Báo cáo hồ sơ">
           {(
@@ -325,7 +374,7 @@ export function G01({
       )}
       <div className="g01-toolbar">
         <div>
-          <h2>Hồ sơ {prefix.toUpperCase()}</h2>
+          <h2>{labels.heading}</h2>
           <p className="intro">
             {prefix === "g03"
               ? "Theo dõi phản ánh an toàn trong phạm vi được cấp quyền."
@@ -340,7 +389,7 @@ export function G01({
             onClick={() => setShowCreate((v) => !v)}
             disabled={busy}
           >
-            {showCreate ? "Ẩn biểu mẫu" : "Báo sự cố mới"}
+            {showCreate ? "Đóng biểu mẫu" : labels.create}
           </button>
         )}
       </div>
@@ -356,9 +405,18 @@ export function G01({
       )}
       {showCreate && catalog && (
         <section className="panel report-panel">
-          <h2>Báo sự cố cơ sở vật chất</h2>
+          <div className="section-heading">
+            <div>
+              <h2>{labels.form}</h2>
+              <p className="intro">
+                Mô tả điều bạn quan sát được để người phụ trách có đủ thông tin
+                xử lý.
+              </p>
+            </div>
+          </div>
           <form onSubmit={create}>
             <ReportFields
+                noun={labels.noun}
               value={form}
               catalog={catalog}
               prefix="new"
@@ -369,7 +427,7 @@ export function G01({
               }}
             />
             <button type="submit" className="button primary" disabled={busy}>
-              {busy ? "Đang gửi…" : "Gửi báo sự cố"}
+              {busy ? "Đang gửi…" : labels.submit}
             </button>
           </form>
         </section>
@@ -426,6 +484,7 @@ export function G01({
         <button
           className="button secondary"
           type="button"
+          data-list-refresh
           disabled={busy || loading}
           onClick={() => void refresh()}
         >
@@ -435,7 +494,7 @@ export function G01({
       <div className="work-grid g01-grid">
         <section className="panel" ref={listPanel}>
           <div className="section-heading">
-            <h2>
+            <h2 ref={listHeading} tabIndex={-1}>
               Danh sách hồ sơ <span className="muted-count">{total}</span>
             </h2>
             <small>{mine ? "Cần bạn thao tác" : "Theo quyền của bạn"}</small>
@@ -444,7 +503,11 @@ export function G01({
             <p className="loading">Đang tải hồ sơ…</p>
           ) : items.length === 0 ? (
             <div className="empty">
-              <h3>Chưa có hồ sơ phù hợp</h3>
+              <h3>
+                {mine
+                  ? "Chưa có việc cần bạn thao tác"
+                  : "Chưa có hồ sơ phù hợp"}
+              </h3>
               <p>
                 {catalog?.canCreate
                   ? "Báo sự cố mới hoặc điều chỉnh bộ lọc."
@@ -457,6 +520,7 @@ export function G01({
                 <li key={c.id}>
                   <button
                     className={`task-row ${selected === c.id ? "selected" : ""}`}
+                    aria-current={selected === c.id ? "true" : undefined}
                     onClick={() => chooseCase(c.id)}
                   >
                     <span className="task-copy">
@@ -476,7 +540,7 @@ export function G01({
                     >
                       {c.syncStatus === "ready"
                         ? statusNames[c.status]
-                        : "Chờ đối soát"}
+                        : "Đang xác nhận"}
                     </span>
                   </button>
                 </li>
@@ -508,25 +572,25 @@ export function G01({
         <section className="panel" ref={detailPanel}>
           <div className="section-heading">
             <h2>Chi tiết hồ sơ</h2>
-            {detail && (
+            {selected && (<div className="detail-tools">
+              <button type="button" className="text-button" disabled={busy || loading} onClick={() => void refresh()}>Làm mới hồ sơ</button>
               <button
                 type="button"
                 className="button secondary case-list-return"
                 aria-label="Về danh sách hồ sơ"
-                onClick={() =>
-                  listPanel.current?.scrollIntoView({ block: "start" })
-                }
+                onClick={() => navigate(caseViews[prefix]!)}
               >
                 Về danh sách
               </button>
-            )}
+            </div>)}
           </div>
           {!detail ? (
-            <p className="detail-empty">
-              {selected
+            <div className="detail-empty">
+              <p>{detailError ? "Chưa mở được hồ sơ. Thử làm mới hoặc về danh sách để chọn hồ sơ khác." : selected
                 ? "Đang tải chi tiết…"
-                : "Chọn hồ sơ để xem bước tiếp theo và lịch sử."}
-            </p>
+                : "Chọn hồ sơ để xem bước tiếp theo và lịch sử."}</p>
+              {detailError && <p role="alert">{detailError}</p>}
+            </div>
           ) : (
             <div className="details case-detail">
               <span
@@ -535,8 +599,40 @@ export function G01({
                 {statusNames[detail.item.status]}
               </span>
               <span className="case-code">{detail.item.code}</span>
-              <h3>{detail.item.title}</h3>
+              <h3 ref={detailHeading} tabIndex={-1}>
+                {detail.item.title}
+              </h3>
               <p className="case-description">{detail.item.description}</p>
+              <div className="next-step">
+                <div>
+                  <span className="section-kicker">
+                    {detail.item.actions.length &&
+                    detail.item.syncStatus === "ready"
+                      ? "Cần bạn thực hiện"
+                      : "Tiến độ xử lý"}
+                  </span>
+                  <p>{nextStep}</p>
+                </div>
+                {!!detail.item.actions.length &&
+                  detail.item.syncStatus === "ready" && (
+                    <button
+                      className="button primary"
+                      type="button"
+                      onClick={() => {
+                        const node = document.getElementById(
+                          `case-actions-${prefix}`,
+                        );
+                        node?.focus({ preventScroll: true });
+                        node?.scrollIntoView({
+                          block: "start",
+                          behavior: "auto",
+                        });
+                      }}
+                    >
+                      Đến bước xử lý <span aria-hidden="true">↓</span>
+                    </button>
+                  )}
+              </div>
               <dl className="case-facts">
                 <div>
                   <dt>Người báo</dt>
@@ -607,9 +703,9 @@ export function G01({
               />
               {detail.item.syncStatus !== "ready" ? (
                 <p className="message error">
-                  Kết quả đồng bộ chưa được xác nhận. Hồ sơ đã được giữ lại để
-                  tự đối soát; trang tự cập nhật và sẽ mở lại thao tác khi phục
-                  hồi xong.
+                  Yêu cầu đã được lưu. Hệ thống đang xác nhận kết quả và sẽ tự
+                  mở lại thao tác khi sẵn sàng. Hãy giữ nguyên hồ sơ, không gửi
+                  lại.
                 </p>
               ) : (
                 catalog && (
@@ -620,6 +716,7 @@ export function G01({
                     busy={busy}
                     act={act}
                     evidenceReady={evidenceReady}
+                    prefix={prefix}
                   />
                 )
               )}
@@ -744,18 +841,21 @@ function ReportFields({
   prefix,
   change,
   disabled,
+  noun = "sự cố",
 }: {
   value: typeof initial;
   catalog: Catalog;
   prefix: string;
   change: (v: typeof initial) => void;
   disabled: boolean;
+  noun?: string;
 }) {
   return (
     <fieldset disabled={disabled} className="report-fields">
-      <label htmlFor={`${prefix}-title`}>Tiêu đề sự cố</label>
+      <label htmlFor={`${prefix}-title`}>Tiêu đề {noun}</label>
       <input
         id={`${prefix}-title`}
+        placeholder="Mô tả ngắn điều cần xử lý"
         required
         minLength={5}
         maxLength={160}
@@ -798,9 +898,10 @@ function ReportFields({
           </select>
         </label>
       </div>
-      <label htmlFor={`${prefix}-description`}>Mô tả sự cố</label>
+      <label htmlFor={`${prefix}-description`}>Mô tả {noun}</label>
       <textarea
         id={`${prefix}-description`}
+        placeholder="Hiện tượng, thời điểm bắt đầu và ảnh hưởng bạn quan sát được…"
         required
         minLength={10}
         maxLength={4000}
@@ -813,6 +914,7 @@ function ReportFields({
 }
 function Actions({
   evidenceReady,
+  prefix,
   item,
   catalog,
   busy,
@@ -822,6 +924,7 @@ function Actions({
   catalog: Catalog;
   busy: boolean;
   evidenceReady: boolean;
+  prefix: string;
   act: (action: string, fields?: Record<string, unknown>) => Promise<void>;
 }) {
   const [reason, setReason] = useState(""),
@@ -846,8 +949,10 @@ function Actions({
       </p>
     );
   return (
-    <div className="action-panel">
-      <h3>Bước tiếp theo</h3>
+    <div className="action-panel" aria-label="Thao tác hồ sơ">
+      <h3 id={`case-actions-${prefix}`} tabIndex={-1}>
+        Bước tiếp theo
+      </h3>
       {has("confirm") && (
         <button
           className="button primary"
@@ -885,7 +990,7 @@ function Actions({
           disabled={busy}
           onClick={() => void act("accept")}
         >
-          Tiếp nhận sự cố
+          {prefix === "g03" ? "Tiếp nhận phản ánh" : "Tiếp nhận sự cố"}
         </button>
       )}
       {(has("return_info") || has("return_work")) && (
@@ -922,6 +1027,7 @@ function Actions({
           }}
         >
           <ReportFields
+            noun={caseLabels[prefix as keyof typeof caseLabels]?.noun}
             value={form}
             change={setForm}
             catalog={catalog}

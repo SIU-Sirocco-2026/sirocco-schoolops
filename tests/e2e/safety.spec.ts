@@ -27,6 +27,8 @@ async function login(page: Page, user: string) {
       .click();
 }
 async function open(page: Page, title: string) {
+  const back = page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true });
+  if (await back.isVisible()) await back.click();
   await page.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await page.getByRole("button").filter({ hasText: title }).click();
@@ -44,15 +46,15 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
     [r, s, a, outsider] = await Promise.all(contexts.map((c) => c.newPage()));
   const title = `Kiểm tra vật cản hành lang giả lập ${Date.now()}`;
   await login(r!, "safety_reporter");
-  await r!.getByRole("button", { name: "Báo sự cố mới", exact: true }).click();
-  await r!.getByLabel("Tiêu đề sự cố", { exact: true }).fill(title);
+  await r!.getByRole("button", { name: "Phản ánh an toàn mới", exact: true }).click();
+  await r!.getByLabel("Tiêu đề phản ánh", { exact: true }).fill(title);
   await r!.getByLabel("Thiết bị", { exact: true }).selectOption("");
   await r!
-    .getByLabel("Mô tả sự cố", { exact: true })
+    .getByLabel("Mô tả phản ánh", { exact: true })
     .fill(
       "Phản ánh giả lập trung tính về vật cản ở hành lang, không có danh tính thật.",
     );
-  await r!.getByRole("button", { name: "Gửi báo sự cố", exact: true }).click();
+  await r!.getByRole("button", { name: "Gửi phản ánh", exact: true }).click();
   await expect(r!.locator(".case-code")).toHaveText(/^G03-/);
   const code = await r!.locator(".case-code").innerText();
   await login(outsider!, "reporter");
@@ -69,7 +71,7 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
   await login(s!, "safety");
   await open(s!, title);
   await s!
-    .getByRole("button", { name: "Tiếp nhận sự cố", exact: true })
+    .getByRole("button", { name: "Tiếp nhận phản ánh", exact: true })
     .click();
   await s!
     .getByLabel("Người hoặc nhóm xử lý", { exact: true })
