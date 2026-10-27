@@ -91,9 +91,17 @@ export async function decodeResponse<T>(response: Response): Promise<T> {
               : "Không thể hoàn tất yêu cầu. Hãy kiểm tra thông tin rồi thử lại.";
     throw new ApiError(message, response.status);
   }
-  return (
-    response.headers.get("content-type")?.includes("application/json")
-      ? await response.json()
-      : await response.blob()
-  ) as T;
+  try {
+    return (
+      response.headers.get("content-type")?.includes("application/json")
+        ? await response.json()
+        : await response.blob()
+    ) as T;
+  } catch {
+    // A successful status does not prove that the client received the full result.
+    throw new ApiError(
+      "Chưa đọc được đầy đủ phản hồi từ dịch vụ. Hãy làm mới hồ sơ để kiểm tra kết quả trước khi gửi lại thao tác.",
+      response.status,
+    );
+  }
 }

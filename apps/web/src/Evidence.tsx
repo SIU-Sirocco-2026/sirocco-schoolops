@@ -46,8 +46,17 @@ export function Evidence({
   const [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [readError, setReadError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [loaded, setLoaded] = useState(false),
+    [reading, setReading] = useState(false);
   const key = useRef(crypto.randomUUID()),
     input = useRef<HTMLInputElement>(null);
+  const mounted = useRef(true), uploading = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const mimeTypesKey = JSON.stringify(policy.mimeTypes);
   const allowed = filePolicy(policy.mimeTypes);
@@ -57,6 +66,7 @@ export function Evidence({
     let timer: ReturnType<typeof setTimeout> | undefined;
     async function poll() {
       let delay = 30000;
+      setReading(true);
       try {
         const data = await request<{
           items: FileEvidence[];
@@ -65,7 +75,8 @@ export function Evidence({
         if (!active) return;
         setFiles(data.items);
         setCanUpload(data.canUpload);
-        setError("");
+        setLoaded(true);
+        setReadError("");
         onReady(
           data.items.filter(
             (f) =>
@@ -82,12 +93,14 @@ export function Evidence({
           setFiles([]);
           setCanUpload(false);
           onReady(false);
-          setError((e as Error).message);
+          setReadError(`Chưa làm mới được danh sách bằng chứng. ${(e as Error).message}`);
           if (e instanceof ApiError && [401, 403, 404].includes(e.status))
             return;
           delay =
             e instanceof ApiError && e.status === 429 ? e.retryAfterMs : 10000;
         }
+      } finally {
+        if (active) setReading(false);
       }
       if (active) timer = setTimeout(() => void poll(), delay);
     }
@@ -99,9 +112,11 @@ export function Evidence({
   }, [caseId, taskId, prefix, refreshIndex, policy.minClean, mimeTypesKey]);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || validationError) return;
+    if (!file || validationError || uploading.current) return;
+    uploading.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await request(`/api/${prefix}/cases/${caseId}/evidence`, {
         method: "POST",
@@ -112,18 +127,17 @@ export function Evidence({
         },
         body: await file.arrayBuffer(),
       });
+      if (!mounted.current) return;
       key.current = crypto.randomUUID();
+      setNotice(`Đã nhận tệp ${file.name}. Hệ thống sẽ tự cập nhật kết quả kiểm tra; bạn không cần tải lại.`);
       setFile(null);
       if (input.current) input.current.value = "";
-      const data = await request<{ items: FileEvidence[]; canUpload: boolean }>(
-        `/api/${prefix}/cases/${caseId}/evidence`,
-      );
-      setFiles(data.items);
       setRefreshIndex((n) => n + 1);
     } catch (e) {
-      setError((e as Error).message);
+      if (mounted.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      uploading.current = false;
+      if (mounted.current) setBusy(false);
     }
   }
   async function download(f: FileEvidence) {
@@ -132,6 +146,7 @@ export function Evidence({
       const blob = await request<Blob>(
         `/api/${prefix}/cases/${caseId}/evidence/${f.id}/download`,
       );
+      if (!mounted.current) return;
       const url = URL.createObjectURL(blob),
         link = document.createElement("a");
       link.href = url;
@@ -139,7 +154,7 @@ export function Evidence({
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
-      setError((e as Error).message);
+      if (mounted.current) setError((e as Error).message);
     }
   }
   return (
@@ -154,6 +169,12 @@ export function Evidence({
           {error}
         </p>
       )}
+      {notice && <p role="status" className="message success">{notice}</p>}
+      {readError && <p role="alert" className="message error">{readError}</p>}
+      <button type="button" className="text-button" disabled={busy || reading}
+        onClick={() => setRefreshIndex((n) => n + 1)}>
+        {reading ? "Đang làm mới bằng chứng…" : "Làm mới bằng chứng"}
+      </button>
       {canUpload && (
         <form
           className="upload-form"
@@ -204,7 +225,8 @@ export function Evidence({
           </button>
         </form>
       )}
-      {!files.length && <p>Chưa có bằng chứng.</p>}
+      {!loaded && !readError && <p>Đang tải bằng chứng…</p>}
+      {loaded && !readError && !files.length && <p>Chưa có bằng chứng.</p>}
       {files.some(
         (f) =>
           f.taskId === taskId && ["pending", "error"].includes(f.scanStatus),

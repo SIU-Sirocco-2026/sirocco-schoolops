@@ -134,3 +134,13 @@ test("business errors preserve API message and successful downloads stay binary"
   );
   assert.equal(await blob.text(), "file contents");
 });
+
+test("incomplete successful JSON explains that a mutation result must be checked before retrying", async () => {
+  await assert.rejects(
+    decodeResponse(new Response('{"item":', {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    })),
+    (error: Error) => error instanceof ApiError && error.status === 201 && /làm mới/.test(error.message) && /trước khi gửi lại/.test(error.message),
+  );
+});

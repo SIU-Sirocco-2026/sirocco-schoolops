@@ -718,7 +718,7 @@ export function G01({
                 </div>
               )}
               <Evidence
-                key={`evidence-${detail.item.id}`}
+                key={`evidence-${detail.item.id}:${detail.item.taskId}`}
                 request={request}
                 caseId={detail.item.id}
                 taskId={detail.item.taskId}
