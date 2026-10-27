@@ -57,11 +57,17 @@ function date(value: string) {
 
 function App() {
   const location = useWorkspaceLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.view, location.caseId]);
   const [reduceEffects, setReduceEffects] = useState(() => {
     try {
       const preference = localStorage.getItem("schoolops-reduce-effects");
       if (preference !== null) return preference === "true";
-    } catch { /* The interface also works when browser storage is unavailable. */ }
+    } catch {
+      /* The interface also works when browser storage is unavailable. */
+    }
     return window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
   });
   const [user, setUser] = useState<User | null>(null);
@@ -174,7 +180,9 @@ function App() {
     (role) => role === "reporter" || role === "coordinator",
   );
   return (
-    <div className={`workspace ${!user ? "guest-workspace" : ""} ${user && location.caseId && ["g01", "environment", "safety"].includes(mode) ? "has-open-case" : ""} ${reduceEffects ? "solid-effects" : ""}`}>
+    <div
+      className={`workspace ${!user ? "guest-workspace" : ""} ${user && location.caseId && ["g01", "environment", "safety"].includes(mode) ? "has-open-case" : ""} ${reduceEffects ? "solid-effects" : ""}`}
+    >
       <a className="skip-link" href="#workspace">
         Đến nội dung chính
       </a>
@@ -185,6 +193,15 @@ function App() {
             SchoolOps<small>SIROCCO</small>
           </span>
         </a>
+        <button
+          className="mobile-workspace-toggle"
+          aria-label="Không gian làm việc"
+          aria-controls="schoolops-navigation"
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((open) => !open)}
+        >
+          Không gian <span aria-hidden="true">⌄</span>
+        </button>
         <div className="workspace-label">
           <span className="school-icon">SIU</span>
           <span>
@@ -192,7 +209,11 @@ function App() {
           </span>
         </div>
         <div className="nav-label">Không gian làm việc</div>
-        <nav aria-label="Điều hướng">
+        <nav
+          id="schoolops-navigation"
+          className={mobileNavOpen ? "mobile-open" : ""}
+          aria-label="Điều hướng"
+        >
           <button
             className={`nav-item ${mode === "g01" ? "active" : ""}`}
             aria-current={mode === "g01" ? "page" : undefined}
@@ -279,26 +300,39 @@ function App() {
                     : "Nhiệm vụ nền tảng"}
           </span>
           <div className="topbar-tools">
-          <span className="env-badge">
-            <span className="small-dot" />
-            Môi trường demo
-          </span>
-          <button
-            className="appearance-control"
-            aria-pressed={reduceEffects}
-            title="Dùng nền đặc để giảm hiệu ứng trong suốt"
-            onClick={() => {
-              const next = !reduceEffects;
-              setReduceEffects(next);
-              try { localStorage.setItem("schoolops-reduce-effects", String(next)); } catch { /* Session-only preference. */ }
-            }}
-          >
-            Giảm hiệu ứng
-          </button>
-          {user && <button
-            className="text-button logout-control"
-            onClick={() => void keycloak.logout({ redirectUri: window.location.origin })}
-          >Đăng xuất</button>}
+            <span className="env-badge">
+              <span className="small-dot" />
+              Môi trường demo
+            </span>
+            <button
+              className="appearance-control"
+              aria-pressed={reduceEffects}
+              title="Dùng nền đặc để giảm hiệu ứng trong suốt"
+              onClick={() => {
+                const next = !reduceEffects;
+                setReduceEffects(next);
+                try {
+                  localStorage.setItem(
+                    "schoolops-reduce-effects",
+                    String(next),
+                  );
+                } catch {
+                  /* Session-only preference. */
+                }
+              }}
+            >
+              Giảm hiệu ứng
+            </button>
+            {user && (
+              <button
+                className="text-button logout-control"
+                onClick={() =>
+                  void keycloak.logout({ redirectUri: window.location.origin })
+                }
+              >
+                Đăng xuất
+              </button>
+            )}
           </div>
         </header>
         <div className="page">

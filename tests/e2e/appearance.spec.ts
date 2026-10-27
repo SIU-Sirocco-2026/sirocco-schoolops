@@ -57,6 +57,9 @@ test("glass surfaces have an opaque fallback, a persistent reduced-effects choic
       });
   }
   await page.goto("/");
+  await expect(
+    page.getByRole("button", { name: /Đăng nhập vào SchoolOps/ }),
+  ).toBeEnabled();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "Đến nội dung chính", exact: true }),
