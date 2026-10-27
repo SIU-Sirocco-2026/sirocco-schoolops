@@ -19,6 +19,7 @@
     "demo:logs": "docker compose logs --tail 100",
     "demo:verify": "node scripts/verify.mjs",
     "demo:verify:g01": "node scripts/verify-g01.mjs",
+    "demo:verify:boundaries": "node scripts/verify-boundaries.mjs",
     "docker:repair": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/repair-docker-runtime.ps1",
     "demo:verify:phase3": "node scripts/verify-phase3.mjs",
     "packs:validate": "node scripts/packs.mjs validate",

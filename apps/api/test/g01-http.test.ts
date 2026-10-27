@@ -24,7 +24,9 @@ const ids = {
   outsider: "66666666-6666-4666-8666-666666666666",
 };
 const caseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-async function fixture() {
+async function fixture(
+  overrides: Partial<{ status: string; revision: number }> = {},
+) {
   let actor = { id: ids.coordinator, role: "coordinator" as Role },
     writes = 0,
     engineCalls = 0;
@@ -41,6 +43,7 @@ async function fixture() {
     process_id: "p1",
     task_id: "t1",
     task_key: "verify",
+    ...overrides,
   };
   const query = async (sql: string) => {
     if (sql.startsWith("SELECT * FROM memberships"))
@@ -187,6 +190,47 @@ test("HTTP case transition checks the actual engine task before recording a comm
     assert.equal((await response.json()).error.code, "ENGINE_CONFLICT");
     assert.equal(f.engineCalls(), 1);
     assert.equal(f.writes(), 0);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a stale tab receives a revision conflict before action eligibility, while unrelated callers still receive no case details", async () => {
+  const f = await fixture({ status: "assignment", revision: 2 });
+  try {
+    const stale = await f.call(
+      ids.coordinator,
+      "coordinator",
+      `/cases/${caseId}/actions`,
+      {
+        action: "accept",
+        revision: 1,
+      },
+    );
+    assert.equal(stale.status, 409);
+    assert.equal((await stale.json()).error.code, "STALE_REVISION");
+    const forbidden = await f.call(
+      ids.coordinator,
+      "coordinator",
+      `/cases/${caseId}/actions`,
+      {
+        action: "accept",
+        revision: 2,
+      },
+    );
+    assert.equal(forbidden.status, 403);
+    const outsider = await f.call(
+      ids.outsider,
+      "coordinator",
+      `/cases/${caseId}/actions`,
+      {
+        action: "accept",
+        revision: 1,
+      },
+    );
+    assert.equal(outsider.status, 404);
+    assert.equal(f.writes(), 0);
+    assert.equal(f.engineCalls(), 0);
   } finally {
     await f.close();
   }

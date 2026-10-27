@@ -64,6 +64,7 @@ pnpm demo:verify:phase3
 pnpm demo:verify:phase4
 pnpm demo:verify:phase5
 pnpm demo:verify:phase6
+pnpm demo:verify:boundaries --isolated-demo
 pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm source:verify
@@ -73,5 +74,7 @@ pnpm demo:verify:phase7
 ```
 
 Giai đoạn 3 chủ động gây lỗi dịch vụ; giai đoạn 7 tạm dừng nguồn để nhường cổng cho stack restore độc lập rồi khởi động lại nguồn trong `finally`. Không thao tác demo đồng thời. Bài restore giữ project/volume diễn tập và dữ liệu nguồn; xem [backup/restore](BACKUP-RESTORE.md). Ubuntu CI cài Chromium với `--with-deps`.
+
+Bộ `boundaries` tạm thay role/membership của tài khoản demo và cho hai tác vụ gửi song song, khôi phục fixture trong `finally`. Chỉ dùng dữ liệu giả trên bản cài thử riêng với `--isolated-demo`, chạy tuần tự với các suite khác; không chạy khi đồng đội/người dùng đang thao tác cùng môi trường. Token cũ không tự cấp lại quyền đã thu hồi trong membership ứng dụng. Riêng vô hiệu hóa tại Keycloak chưa có back-channel revocation; access token đã cấp có thể còn hiệu lực tới hạn nếu membership SchoolOps vẫn được bật, nên không tuyên bố tắt Keycloak là thu hồi tức thì mọi request.
 
 Khi lỗi: `docker compose ps`, `pnpm demo:logs`, kiểm tra `GET /api/health/ready` và report dưới `test-results/`. `429` nghĩa là chờ quota reset rồi bấm Làm mới/thử lại; UI giữ biểu mẫu và không tự gửi lại thao tác. `Chờ đối soát` nghĩa là command đã được giữ; chờ worker/engine phục hồi, không sửa database để bỏ bước. Tệp pending/error chưa được dùng làm bằng chứng. Không in `docker compose config` có secret để gửi lên mạng.

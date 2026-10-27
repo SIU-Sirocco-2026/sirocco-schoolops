@@ -518,17 +518,17 @@ export function g01Router({
         );
       row = current;
       from = row.status;
-      if (!caseActions(user, row, teams).includes(input.action))
-        fail(
-          403,
-          "FORBIDDEN_ACTION",
-          "Bạn không được thực hiện thao tác này ở bước hiện tại.",
-        );
       if (row.revision !== input.revision)
         fail(
           409,
           "STALE_REVISION",
           "Hồ sơ đã thay đổi. Làm mới trước khi thao tác tiếp.",
+        );
+      if (!caseActions(user, row, teams).includes(input.action))
+        fail(
+          403,
+          "FORBIDDEN_ACTION",
+          "Bạn không được thực hiện thao tác này ở bước hiện tại.",
         );
       next = { ...row, revision: row.revision + 1 };
       if (input.action === "confirm") {

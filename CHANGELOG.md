@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — thao tác đồng thời và membership
+
+- Hồ sơ đã đổi revision trả xung đột và hướng dẫn làm mới trước khi xét action của tab cũ, sau khi đã kiểm quyền đọc; người ngoài quyền vẫn không thấy chi tiết hồ sơ.
+- Bổ sung bộ kiểm riêng cho hai tab chuyển bước/lưu kết quả, hai thành viên tổ nhận cùng việc, tắt membership và thu hồi role với token đã cấp; khôi phục fixture và kết thúc hồ sơ giả bằng workflow/bằng chứng thật. Bộ này yêu cầu môi trường thử cách ly.
+
 ## Chưa phát hành — kính mờ và bố cục mobile
 
 - Tạo lớp kính mờ nhẹ cho điều hướng/thanh trên và đăng nhập; giữ nền hồ sơ, trường nhập và thông báo đặc, đồng bộ khoảng cách/bo góc và tương phản đường viền điều khiển.
