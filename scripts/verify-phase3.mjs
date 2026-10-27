@@ -6,10 +6,11 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { evidenceContext } from "./evidence.mjs";
+import { local } from "./local-config.mjs";
 const provenance = evidenceContext();
 
 const root = resolve(import.meta.dirname, ".."),
-  base = "http://localhost:8088/api/g01";
+  base = `${local.webOrigin}/api/g01`;
 const env = Object.fromEntries(
   (await readFile(resolve(root, ".env"), "utf8"))
     .split(/\r?\n/)
@@ -59,7 +60,7 @@ async function login() {
     "admin",
   ]) {
     const r = await fetch(
-      "http://localhost:8180/realms/sirocco/protocol/openid-connect/token",
+      `${local.authOrigin}/realms/sirocco/protocol/openid-connect/token`,
       {
         method: "POST",
         body: new URLSearchParams({

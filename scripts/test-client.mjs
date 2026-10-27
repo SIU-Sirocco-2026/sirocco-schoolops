@@ -4,8 +4,9 @@ import assert from "node:assert/strict";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { evidenceContext } from "./evidence.mjs";
+import { local } from "./local-config.mjs";
 export const root = resolve(import.meta.dirname, "..");
-export const base = "http://localhost:8088/api";
+export const base = `${local.webOrigin}/api`;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function gatewayFetch(url, options) {
   const response = await fetch(url, options);
@@ -36,7 +37,7 @@ export async function client() {
   const tokens = {};
   async function login(user) {
     const r = await fetch(
-      "http://localhost:8180/realms/sirocco/protocol/openid-connect/token",
+      `${local.authOrigin}/realms/sirocco/protocol/openid-connect/token`,
       {
         method: "POST",
         body: new URLSearchParams({

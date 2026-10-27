@@ -70,7 +70,7 @@ const app = createApp({
       pool.query("SELECT 1"),
       workflow.ready(),
       fetch(
-        `${issuer.replace("http://localhost:8180", "http://keycloak:8080")}/.well-known/openid-configuration`,
+        process.env.OIDC_DISCOVERY_URL || `${issuer}/.well-known/openid-configuration`,
         { signal: AbortSignal.timeout(4000) },
       ).then((r) => {
         if (!r.ok) throw new Error("Identity unavailable");

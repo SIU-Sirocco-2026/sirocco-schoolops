@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { evidenceContext } from "./evidence.mjs";
+import { local } from "./local-config.mjs";
 const provenance = evidenceContext();
 const root = resolve(import.meta.dirname, "..");
 const env = Object.fromEntries(
@@ -15,7 +16,7 @@ const env = Object.fromEntries(
       return [l.slice(0, i), l.slice(i + 1)];
     }),
 );
-const base = "http://localhost:8088";
+const base = local.webOrigin;
 const results = [];
 async function check(name, fn) {
   await fn();
@@ -24,7 +25,7 @@ async function check(name, fn) {
 }
 async function access(username) {
   const response = await fetch(
-    "http://localhost:8180/realms/sirocco/protocol/openid-connect/token",
+    `${local.authOrigin}/realms/sirocco/protocol/openid-connect/token`,
     {
       method: "POST",
       body: new URLSearchParams({

@@ -2,6 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { local } from "./local-config.mjs";
 import {
   root,
   compose,
@@ -24,6 +25,7 @@ const version = JSON.parse(
   await readFile(join(root, "package.json"), "utf8"),
 ).version;
 console.log(`Building SchoolOps ${version} from ${source}.`);
+console.log(`Web: ${local.webOrigin}; đăng nhập: ${local.authOrigin}.`);
 console.log(
   compose(["up", "-d", "--build", "--wait", "--wait-timeout", "360"], {
     env: {

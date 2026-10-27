@@ -1,5 +1,11 @@
 # Changelog
 
+## Chưa phát hành — môi trường thử độc lập
+
+- Cho phép chọn cổng web/Identity local cùng tên Compose riêng để các bản clone không dùng nhầm container và volume của nhau. Giữ cổng mặc định 8088/8180.
+- Sinh và đồng bộ redirect đăng nhập theo cổng; các bộ verify, Playwright, Vite và CLI gói dùng cùng cấu hình local. Readiness nội bộ không phụ thuộc cổng host của Identity.
+- Restore kiểm tra gateway tại cổng của bản phục hồi, giữ phạm vi project và dữ liệu nguồn; bổ sung kiểm thử cấu hình và hướng dẫn cài hai bản trên cùng máy.
+
 ## Chưa phát hành — giao diện làm việc
 
 - Sắp xếp không gian theo vai trò; chuyển nhiệm vụ nền tảng vào công cụ kiểm tra, giữ phần việc đang chờ và hướng dẫn bước tiếp theo trong hồ sơ.

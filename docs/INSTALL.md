@@ -35,6 +35,22 @@ Mở [SchoolOps](http://localhost:8088). Identity ở `http://localhost:8180`. H
 
 API tự chạy migration 1–8 có khóa khi khởi động, seed danh mục/vai trò và gói mặc định nếu chưa có; không ghi đè active revision sau restart. Chạy lại `demo:up` không xóa dữ liệu. `demo:down` dừng/xóa container/network và giữ volume. Không dùng `down -v` trên dữ liệu cần giữ. Sau nâng cấp source, backup bản hiện tại, đọc migration/giới hạn, rồi chạy `demo:up`; bản RC này chưa có migration hạ cấp.
 
+## Hai bản clone trên cùng máy
+
+Tên project Compose quyết định container, network và volume của bản cài. Hai thư mục clone dùng cùng tên project vẫn trỏ vào cùng tài nguyên Docker; một clone mới chưa tự chứng minh dữ liệu mới. Trước `demo:init` của bản thứ hai, thêm ba dòng sau vào `.env` của **bản thứ hai** (hoặc đặt biến môi trường trước init):
+
+```dotenv
+COMPOSE_PROJECT_NAME=schoolops-trial
+SIROCCO_WEB_PORT=8098
+SIROCCO_AUTH_PORT=8190
+```
+
+Chọn tên chưa có trong `docker compose ls -a` và cặp cổng đang trống. Chạy `pnpm demo:init`, `pnpm demo:up`, `pnpm demo:users` trong thư mục đó. Init giữ các giá trị và sinh credential riêng; web ở `http://localhost:8098`, đăng nhập ở `http://localhost:8190`. Các bộ verify, Playwright, CLI gói và restore dùng cấu hình local này. Cổng vẫn chỉ bind loopback. Đặt tên riêng **và** cổng riêng; đổi riêng cổng không cách ly database.
+
+Nếu đổi cổng một bản cài đã có, chạy lại `demo:init`, `demo:up`, `demo:users` để đồng bộ redirect đăng nhập. Không thay secret hoặc dùng `.env` của clone khác với volume cũ. Dừng bằng `docker compose stop` trong đúng thư mục; kiểm tên project trước mọi lệnh có thể ảnh hưởng dữ liệu. Bản phục hồi giữ cổng của backup và dùng project riêng; bài diễn tập tạm dừng đúng bản nguồn để nhường cặp cổng đó.
+
+Vite dev server dùng `SIROCCO_WEB_PORT` trong `.env` gốc làm đích proxy; cổng Vite vẫn là 5173. Script quay video RC1 giữ kiểm tra phiên bản RC1 và không được dùng để ghi hình bản mới.
+
 Để tạm dừng sau khi thử, chạy `docker compose stop` trong thư mục clone. Khi cần mở lại, chạy `pnpm demo:up`; dữ liệu cũ được giữ. Với lần cài mới trên máy khác, luôn chạy `demo:init` để sinh secret của chính máy đó.
 
 Kiểm tra sâu, chạy **tuần tự** trên demo riêng:

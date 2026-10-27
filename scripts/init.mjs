@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { parseLocalEnv, localUrls } from "./local-config.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 let existing = "";
@@ -11,15 +12,11 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
-const env = Object.fromEntries(
-  existing
-    .split(/\r?\n/)
-    .filter((line) => line && !line.startsWith("#"))
-    .map((line) => {
-      const i = line.indexOf("=");
-      return [line.slice(0, i), line.slice(i + 1)];
-    }),
-);
+const env = parseLocalEnv(existing);
+// Persist these inputs so Compose and commands run in a later shell agree.
+for (const name of ["SIROCCO_WEB_PORT", "SIROCCO_AUTH_PORT", "COMPOSE_PROJECT_NAME"])
+  if (process.env[name] !== undefined) env[name] = process.env[name];
+const urls = localUrls(env);
 for (const key of [
   "POSTGRES_ADMIN_PASSWORD",
   "APP_DB_PASSWORD",
@@ -137,8 +134,8 @@ const realm = {
       publicClient: true,
       standardFlowEnabled: true,
       directAccessGrantsEnabled: false,
-      redirectUris: ["http://localhost:8088/*", "http://localhost:5173/*"],
-      webOrigins: ["http://localhost:8088", "http://localhost:5173"],
+      redirectUris: [`${urls.webOrigin}/*`, "http://localhost:5173/*"],
+      webOrigins: [urls.webOrigin, "http://localhost:5173"],
       attributes: { "pkce.code.challenge.method": "S256" },
       protocolMappers: [audience],
     },
@@ -184,7 +181,7 @@ console.log(
 );
 console.log("Tài khoản demo: " + users.map((u) => u[1]).join(", ") + ".");
 console.log(
-  "Chạy pnpm demo:up; mở http://localhost:8088 khi dịch vụ sẵn sàng.",
+  `Chạy pnpm demo:up; mở ${urls.webOrigin} khi dịch vụ sẵn sàng.`,
 );
 
 await writeFile(

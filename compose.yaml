@@ -28,10 +28,10 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME: http://localhost:${SIROCCO_AUTH_PORT:-8180}
       KC_HEALTH_ENABLED: "true"
       JAVA_OPTS_KC_HEAP: -Xms128m -Xmx512m
-    ports: ["127.0.0.1:8180:8080"]
+    ports: ["127.0.0.1:${SIROCCO_AUTH_PORT:-8180}:8080"]
     volumes:
       - ./infra/generated/realm.json:/opt/keycloak/data/import/realm.json:ro
       - ./infra/keycloak/themes/schoolops:/opt/keycloak/themes/schoolops:ro
@@ -74,8 +74,9 @@ services:
       PORT: "3000"
       APP_SOURCE_REVISION: ${SIROCCO_SOURCE_REVISION:-unknown}
       DATABASE_URL: postgresql://schoolops:${APP_DB_PASSWORD}@postgres:5432/schoolops
-      OIDC_ISSUER: http://localhost:8180/realms/sirocco
+      OIDC_ISSUER: http://localhost:${SIROCCO_AUTH_PORT:-8180}/realms/sirocco
       OIDC_JWKS_URL: http://keycloak:8080/realms/sirocco/protocol/openid-connect/certs
+      OIDC_DISCOVERY_URL: http://keycloak:8080/realms/sirocco/.well-known/openid-configuration
       OIDC_AUDIENCE: schoolops-api
       FLOWABLE_URL: http://flowable:8080/flowable-rest/service
       FLOWABLE_USER: rest-admin
@@ -184,7 +185,7 @@ services:
     volumes:
       - ./infra/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./infra/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
-    ports: ["127.0.0.1:8088:9080"]
+    ports: ["127.0.0.1:${SIROCCO_WEB_PORT:-8088}:9080"]
     depends_on:
       api: { condition: service_healthy }
       web: { condition: service_started }

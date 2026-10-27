@@ -26,6 +26,7 @@ import {
   removeOwnedDirectory,
 } from "./ops-lib.mjs";
 import { encrypt, decrypt, sha256 } from "./backup-crypto.mjs";
+import { localUrls, readLocalEnv } from "./local-config.mjs";
 
 const databases = ["schoolops", "keycloak", "flowable"];
 const payloadFiles = [
@@ -467,7 +468,10 @@ export async function restore(input, target, project, password = passphrase) {
     // Readiness covers the database/Identity/workflow; scanner has its own healthcheck.
     for (let i = 0; i < 90; i++) {
       try {
-        const r = await fetch("http://localhost:8088/api/health/ready");
+        const restoredUrls = localUrls(readLocalEnv(target, {}));
+        const r = await fetch(`${restoredUrls.webOrigin}/api/health/ready`, {
+          signal: AbortSignal.timeout(5000),
+        });
         if (r.ok) {
           report.applicationReady = true;
           await writeFile(

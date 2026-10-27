@@ -332,7 +332,7 @@ try {
       compose(["start", ...originalServices]);
       for (let i = 0; i < 120; i++) {
         try {
-          if ((await fetch("http://localhost:8088/api/health/ready")).ok) {
+          if ((await fetch(`${base}/health/ready`, { signal: AbortSignal.timeout(5000) })).ok) {
             originalPaused = false;
             break;
           }

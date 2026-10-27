@@ -5,6 +5,7 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { evidenceContext } from "./evidence.mjs";
+import { local } from "./local-config.mjs";
 const provenance = evidenceContext();
 const root = resolve(import.meta.dirname, "..");
 const env = Object.fromEntries(
@@ -16,7 +17,7 @@ const env = Object.fromEntries(
       return [l.slice(0, i), l.slice(i + 1)];
     }),
 );
-const base = "http://localhost:8088/api/g01",
+const base = `${local.webOrigin}/api/g01`,
   results = [],
   tokens = {};
 for (const username of [
@@ -27,7 +28,7 @@ for (const username of [
   "admin",
 ]) {
   const response = await fetch(
-    "http://localhost:8180/realms/sirocco/protocol/openid-connect/token",
+    `${local.authOrigin}/realms/sirocco/protocol/openid-connect/token`,
     {
       method: "POST",
       body: new URLSearchParams({

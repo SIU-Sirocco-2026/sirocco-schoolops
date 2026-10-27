@@ -2,6 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import { defineConfig, devices } from "@playwright/test";
 import { evidenceContext } from "./scripts/evidence.mjs";
+import { local } from "./scripts/local-config.mjs";
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "test-results/browser",
@@ -16,7 +17,7 @@ export default defineConfig({
     ["json", { outputFile: "test-results/browser-results.json" }],
   ],
   use: {
-    baseURL: "http://localhost:8088",
+    baseURL: local.webOrigin,
     trace: "retain-on-failure",
     actionTimeout: 20000,
   },

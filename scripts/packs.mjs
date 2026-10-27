@@ -2,6 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { local } from "./local-config.mjs";
 const [command, arg, version] = process.argv.slice(2);
 const root = resolve(import.meta.dirname, "..");
 async function token() {
@@ -13,7 +14,7 @@ async function token() {
       .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
   );
   const r = await fetch(
-    "http://localhost:8180/realms/sirocco/protocol/openid-connect/token",
+    `${local.authOrigin}/realms/sirocco/protocol/openid-connect/token`,
     {
       method: "POST",
       body: new URLSearchParams({
@@ -63,7 +64,7 @@ async function run() {
       "Dùng: pnpm packs:validate <folder> | packs:install <folder> | packs:activate <id> <version> | packs:list",
     );
   const r = await fetch(
-    `${process.env.SIROCCO_API || "http://localhost:8088/api"}/packs${path}`,
+    `${process.env.SIROCCO_API || `${local.webOrigin}/api`}/packs${path}`,
     {
       method: body ? "POST" : "GET",
       headers: {

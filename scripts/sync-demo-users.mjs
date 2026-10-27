@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { realmUi } from "./realm-ui.mjs";
+import { local } from "./local-config.mjs";
 const env = Object.fromEntries(
   (await readFile(new URL("../.env", import.meta.url), "utf8"))
     .split(/\r?\n/)
@@ -16,7 +17,7 @@ const realm = JSON.parse(
   ),
 );
 const response = await fetch(
-  "http://localhost:8180/realms/master/protocol/openid-connect/token",
+  `${local.authOrigin}/realms/master/protocol/openid-connect/token`,
   {
     method: "POST",
     body: new URLSearchParams({
@@ -31,7 +32,7 @@ if (!response.ok) throw Error("Không đăng nhập được admin Keycloak loca
 const token = (await response.json()).access_token;
 async function api(path, body, method = body ? "POST" : "GET") {
   const r = await fetch(
-    `http://localhost:8180/admin/realms/sirocco${path ? `/${path}` : ""}`,
+    `${local.authOrigin}/admin/realms/sirocco${path ? `/${path}` : ""}`,
     {
       method,
       headers: {
@@ -46,6 +47,12 @@ async function api(path, body, method = body ? "POST" : "GET") {
   return text ? JSON.parse(text) : null;
 }
 await api("", realmUi, "PUT");
+const webClients = await api("clients?clientId=schoolops-web");
+if (webClients.length !== 1) throw Error("Không tìm thấy đúng một client SchoolOps.");
+await api(`clients/${webClients[0].id}`, {
+  redirectUris: [`${local.webOrigin}/*`, "http://localhost:5173/*"],
+  webOrigins: [local.webOrigin, "http://localhost:5173"],
+}, "PUT");
 console.log("SchoolOps login presentation ready (Vietnamese).");
 for (const user of realm.users.filter((u) =>
   [
