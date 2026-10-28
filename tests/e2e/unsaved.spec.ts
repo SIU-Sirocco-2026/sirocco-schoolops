@@ -12,6 +12,9 @@ async function login(page: Page, user = "reporter") {
   await expect(page.getByRole("button", { name: "Đăng xuất", exact: true })).toBeVisible();
 }
 async function tools(page: Page) {
+  const navigation = page.getByRole("navigation", { name: "Điều hướng", exact: true });
+  const menu = page.getByRole("button", { name: "Không gian làm việc", exact: true });
+  if (!await navigation.isVisible() && await menu.isVisible()) await menu.click();
   const summary = page.getByText("Công cụ kiểm tra", { exact: true });
   const button = page.getByRole("button", { name: /Nhiệm vụ nền tảng/ });
   if (!await button.isVisible()) await summary.click();
@@ -23,6 +26,7 @@ test("unsaved creation survives rejected workspace and Back navigation, and a su
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   await tools(page);
+  if (!await page.getByRole("navigation", { name: "Điều hướng", exact: true }).isVisible()) await page.getByRole("button", { name: "Không gian làm việc", exact: true }).click();
   await page.getByRole("button", { name: "Sự cố cơ sở vật chất", exact: true }).click();
   await page.getByRole("button", { name: "Báo sự cố mới", exact: true }).click();
   const title = `Bản nháp điều hướng giả lập ${Date.now()}`;
@@ -129,7 +133,8 @@ test("unsaved work and a selected file can cancel case exit or revision refresh,
     await requested;
     await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toBeDisabled();
     await expect(page.getByLabel("Kết quả xử lý", { exact: true })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Chọn tệp", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Đổi tệp", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Bỏ tệp", exact: true })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Tải bằng chứng", exact: true })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Đang làm mới hồ sơ…", exact: true })).toBeDisabled();
   } finally {
@@ -139,6 +144,15 @@ test("unsaved work and a selected file can cancel case exit or revision refresh,
   await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toHaveValue("Kết quả đã lưu từ client khác.");
   await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Chọn tệp", exact: true })).toBeEnabled();
+  await expect(page.locator(".file-name")).toHaveText("Chưa chọn tệp");
+  await expect(page.locator(".selected-evidence")).toHaveCount(0);
+  // Explicit discard must also reset drafts when the server revision has not changed.
+  await page.getByLabel("Biện pháp xử lý", { exact: true }).fill("Bản nháp cùng phiên bản chưa lưu.");
+  await page.getByLabel("Ảnh hoặc tài liệu bằng chứng (tối đa 10 MB)", { exact: true }).setInputFiles({ name: "chon-lai.png", mimeType: "image/png", buffer: png });
+  await page.getByRole("button", { name: "Làm mới hồ sơ", exact: true }).click();
+  await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toHaveValue("Kết quả đã lưu từ client khác.");
+  await expect(page.locator(".file-name")).toHaveText("Chưa chọn tệp");
+  await expect(page.locator(".selected-evidence")).toHaveCount(0);
   await page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.has("case")).toBe(false);
 });

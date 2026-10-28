@@ -34,7 +34,7 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
   await expect(page.locator("html")).toHaveAttribute("lang", "vi");
   await expect(page.locator("#kc-header-wrapper")).toHaveCSS(
     "color",
-    "rgb(32, 86, 63)",
+    "rgb(24, 36, 51)",
   );
   await page.screenshot({
     path: info.outputPath("02-login.png"),
@@ -50,6 +50,31 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
   await expect(
     page.getByRole("heading", { name: "Sự cố cơ sở vật chất", exact: true }),
   ).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const firstRow = page.locator(".task-row").first();
+  await expect(firstRow).toBeVisible();
+  const statusBox = await firstRow.locator(".status").boundingBox();
+  const ownerBox = await firstRow.locator(".row-owner").boundingBox();
+  const dueBox = await firstRow.locator(".row-due").boundingBox();
+  expect(statusBox!.x).toBeLessThan(ownerBox!.x);
+  expect(ownerBox!.x).toBeLessThan(dueBox!.x);
+  await page.screenshot({ path: info.outputPath("03-list-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByLabel("Trạng thái", { exact: true })).toBeHidden();
+  expect((await firstRow.boundingBox())!.y).toBeLessThan(700);
+  await page.screenshot({
+    path: info.outputPath("03-list-mobile-initial.png"),
+  });
+  const filtersToggle = page.getByRole("button", {
+    name: "Bộ lọc hồ sơ",
+    exact: true,
+  });
+  await filtersToggle.click();
+  await expect(page.getByLabel("Trạng thái", { exact: true })).toBeVisible();
+  await expect(filtersToggle).toHaveAttribute("aria-expanded", "true");
+  await filtersToggle.click();
+  await expect(page.getByLabel("Trạng thái", { exact: true })).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const title = `Kiểm tra giao diện máy chiếu ${Date.now()}`;
   await page
     .getByRole("button", { name: "Báo sự cố mới", exact: true })
@@ -66,10 +91,36 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
   const heading = page.locator(".case-detail h3").first();
   await expect(heading).toHaveText(title);
   await expect(heading).toBeFocused();
+  await expect(page.locator(".case-list-panel")).toBeHidden();
+  await expect(page.getByLabel("Tìm hồ sơ", { exact: true })).toBeHidden();
+  await expect(
+    page.locator('.case-progress [aria-current="step"]'),
+  ).toContainText("Xác minh");
+  await expect(page.locator(".case-progress .progress-marker svg")).toHaveCount(
+    6,
+  );
+  await expect(
+    page.locator(".case-facts .secondary-fact").first(),
+  ).toBeHidden();
+  await page
+    .getByRole("button", { name: "Thông tin khác", exact: true })
+    .click();
+  await expect(
+    page.locator(".case-facts .secondary-fact").first(),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Thu gọn thông tin", exact: true })
+    .click();
+  await expect(
+    page.locator(".case-facts .secondary-fact").first(),
+  ).toBeHidden();
   await expect(page).toHaveURL(/view=g01.*case=[a-f0-9-]{36}/);
   const link = page.url();
   // Full-page capture otherwise paints sticky/fixed chrome at the form's old scroll offset.
   await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: info.outputPath("03-case-viewport-desktop.png"),
+  });
   await page.screenshot({
     path: info.outputPath("03-case-desktop.png"),
     fullPage: true,
@@ -96,10 +147,19 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
     });
   expect(metadataContrast).toBeGreaterThanOrEqual(4.5);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".topbar-user")).toContainText("Người báo Demo");
+  await expect(page.locator(".topbar-user")).toBeVisible();
+  await expect(page.locator(".sidebar")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
   const workspaceMenu = page.getByRole("button", {
     name: "Không gian làm việc",
     exact: true,
   });
+  await expect(
+    page.getByRole("link", { name: "SchoolOps trang chủ", exact: true }),
+  ).toBeVisible();
   await expect(workspaceMenu).toHaveAttribute("aria-expanded", "false");
   await workspaceMenu.click();
   await expect(
@@ -119,6 +179,10 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: info.outputPath("04-case-mobile-viewport.png"),
+  });
   await page.screenshot({
     path: info.outputPath("04-case-mobile.png"),
     fullPage: true,
@@ -128,6 +192,7 @@ test("Vietnamese sign-in, linked case, mobile back navigation and readable metad
     .click();
   await expect(page).not.toHaveURL(/case=/);
   await expect(page.getByLabel("Tìm hồ sơ", { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath("05-list-mobile.png") });
   await expect(
     page.getByRole("heading", { name: /Danh sách hồ sơ/ }),
   ).toBeFocused();

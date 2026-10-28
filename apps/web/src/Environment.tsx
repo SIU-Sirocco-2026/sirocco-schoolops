@@ -2,6 +2,8 @@
 // See LICENSE and NOTICE in the repository root.
 import { useEffect, useState } from "react";
 import { G01, statusNames } from "./G01.js";
+import { navigate } from "./workspace-state.js";
+import { IconLeaf, IconRefresh } from "@tabler/icons-react";
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 export function Environment({ request }: { request: Request }) {
   const [sources, setSources] = useState<any[]>([]),
@@ -9,9 +11,10 @@ export function Environment({ request }: { request: Request }) {
     [episodes, setEpisodes] = useState<any[]>([]),
     [rule, setRule] = useState<any>(null),
     [lineage, setLineage] = useState<any>(null),
-    [selected, setSelected] = useState<string | null>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true);
   async function refresh() {
+    setLoading(true);
     try {
       const [s, o, e] = await Promise.all([
         request<any>("/api/g02/sources"),
@@ -29,6 +32,8 @@ export function Environment({ request }: { request: Request }) {
       setObservations([]);
       setEpisodes([]);
       setLineage(null);
+    } finally {
+      setLoading(false);
     }
   }
   useEffect(() => {
@@ -36,25 +41,43 @@ export function Environment({ request }: { request: Request }) {
   }, []);
   async function trace(e: any) {
     try {
-      setLineage(await request(`/api/g02/episodes/${e.id}/lineage`));
-      setSelected(e.caseId);
+      const nextLineage = await request(`/api/g02/episodes/${e.id}/lineage`);
+      if (navigate("environment", e.caseId)) setLineage(nextLineage);
     } catch (e) {
       setError((e as Error).message);
     }
   }
   return (
     <div>
-      <section className="panel environment">
+      <section className="panel environment" aria-busy={loading}>
         <div className="section-heading">
-          <h2>Nguồn PM2.5</h2>
-          <button className="button secondary" onClick={() => void refresh()}>
+          <h2>
+            <IconLeaf size={21} aria-hidden="true" />
+            Nguồn PM2.5
+          </h2>
+          <button
+            className="button secondary"
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
+            <IconRefresh size={16} aria-hidden="true" />
             Làm mới môi trường
           </button>
         </div>
-        <p>
-          Dữ liệu phát lại có nhãn. Số đo giảm chỉ kết thúc điều kiện cảnh báo;
-          cán bộ phải xác minh và đóng hồ sơ.
-        </p>
+        <details className="module-help">
+          <summary>Dữ liệu phát lại · Quy tắc cảnh báo</summary>
+          <p>
+            Dữ liệu phát lại có nhãn. Số đo giảm chỉ kết thúc điều kiện cảnh
+            báo; cán bộ phải xác minh và đóng hồ sơ.
+          </p>
+          {rule && (
+            <p>
+              {rule.label}. Quy tắc {rule.version}: {rule.openConsecutive} lần
+              liên tiếp &gt; {rule.threshold} ug/m³; phục hồi sau{" "}
+              {rule.recoveryConsecutive} lần bình thường.
+            </p>
+          )}
+        </details>
         {error && (
           <p className="message error" role="alert">
             {error}
@@ -68,15 +91,16 @@ export function Environment({ request }: { request: Request }) {
               : "Chưa nhận"}
           </p>
         ))}
-        {rule && (
-          <p>
-            {rule.label}. Quy tắc {rule.version}: {rule.openConsecutive} lần
-            liên tiếp &gt; {rule.threshold} ug/m³; phục hồi sau{" "}
-            {rule.recoveryConsecutive} lần bình thường.
+        {loading && (
+          <p className="module-status" role="status">
+            Đang tải dữ liệu nguồn…
           </p>
         )}
         <h3>Đợt cảnh báo</h3>
-        <ul className="evidence-list">
+        {!loading && !error && !episodes.length && (
+          <p className="module-empty">Chưa có đợt cảnh báo.</p>
+        )}
+        <ul className="evidence-list episode-list">
           {episodes.map((e) => (
             <li key={e.id}>
               <strong>{e.code}</strong>
@@ -166,7 +190,7 @@ export function Environment({ request }: { request: Request }) {
           </ul>
         </details>
       </section>
-      <G01 request={request} prefix="g02" initialCase={selected} />
+      <G01 request={request} prefix="g02" />
     </div>
   );
 }

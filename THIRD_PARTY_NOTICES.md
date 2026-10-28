@@ -2,6 +2,8 @@
 
 Apache-2.0 ở [LICENSE](LICENSE) áp dụng cho mã và tài liệu mới của SchoolOps. Giấy phép của thành phần bên ngoài được giữ nguyên; không coi toàn bộ stack là Apache-2.0.
 
+Giao diện dùng `@tabler/core@1.7.1` và `@tabler/icons-react@3.49.0` (MIT). CSS Core được đóng gói local; không nạp JavaScript hay plugin demo của Tabler. Archive Core thiếu LICENSE, nên văn bản được ghim tại [Tabler Core notice](third-party/licenses/tabler-core-1.7.1.txt) với nguồn và checksum trong manifest. Xem [nguồn tham khảo giao diện](docs/UI-REFERENCES.md).
+
 `@nodable/entities@2.2.0`, phụ thuộc của bản fast-xml-parser đã vá, khai báo MIT nhưng archive npm không kèm LICENSE gốc. Bản lưu ở [third-party/licenses/nodable-entities-2.2.0.txt](third-party/licenses/nodable-entities-2.2.0.txt) lấy từ đúng commit `gitHead` của bản npm; [manifest nguồn](third-party/license-sources.json) ghi URL bất biến, lý do và SHA-256. Công cụ legal kiểm tra đúng package/version, repository, license và hash trước khi đưa văn bản này vào full notices.
 
 | Thành phần                                                                              | Vai trò                         | Giấy phép công bố / nguồn                                                                                                                                                                                               |

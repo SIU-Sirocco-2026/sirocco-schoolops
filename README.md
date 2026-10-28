@@ -4,14 +4,13 @@ Nền tảng dịch vụ nguồn mở điều phối hồ sơ theo gói nghiệp
 
 ## Tải đúng bản để thử
 
-[Bản thử đã kiểm](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/tree/4be87bb7eb77df5da57c5966eca20a45bc07f650) chứa ứng dụng, giao diện glass và các sửa lỗi sau RC2 về phiên, nội dung chưa lưu, bằng chứng đúng vòng xử lý, bộ lọc và cấu hình cài đặt. Các lệnh dưới ghim commit `4be87bb7eb77df5da57c5966eca20a45bc07f650`; `main` hiện còn chờ review/merge mã ứng dụng.
+[Nhánh develop](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/tree/develop) chứa ứng dụng tích hợp cùng giao diện mới: trang giới thiệu các không gian, báo cáo và danh sách G01, xem ảnh bằng chứng, chuyển động có giảm hiệu ứng và giao diện xác thực đồng bộ. `main` còn chờ review/merge tại [PR #49](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/pull/49). Xem [quy ước nhánh](docs/BRANCHING.md).
 
-Đây là bản để đội thử và ghi phản hồi, chưa phải release mới. Ngày 28/10/2026, commit này có 69 kiểm thử unit/tool, 25 ca trình duyệt Windows và [full CI Ubuntu đạt](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/actions/runs/40633098387), gồm 77 nhóm tích hợp, 25 ca trình duyệt, restore/audit/đóng gói. Nghiệm thu người dùng thật và review đội còn chờ. Kết quả của commit này không áp dụng tự động cho các commit sau.
+Đây là bản để thử và ghi phản hồi, chưa phải release mới. Khi nhận lời mời review, lấy đúng SHA trong bộ hướng dẫn bàn giao; không mặc định đầu nhánh develop luôn là bản đã được reviewer thử. Kiểm tra CI của chính commit đang dùng. Bằng chứng [full CI của bản 4be87bb trước đó](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/actions/runs/40633098387) được giữ để truy vết, không tự áp dụng cho giao diện mới. Nghiệm thu người dùng thật và review đội còn chờ.
 
 ```powershell
-git clone --branch fix/giu-nhap-khi-doc-loi --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch develop --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
-git switch --detach 4be87bb7eb77df5da57c5966eca20a45bc07f650
 git rev-parse HEAD
 pnpm install --frozen-lockfile
 pnpm demo:init
@@ -22,7 +21,7 @@ pnpm demo:verify
 
 Cần Git, Node 22.16.0, pnpm 11.25.0 và Docker chạy Linux containers. Mở `http://localhost:8088`; mật khẩu demo là `DEMO_PASSWORD` trong `.env` trên máy chạy. Đọc [cài đặt](docs/INSTALL.md) trước khi nâng cấp bản đã có dữ liệu. Trên nhánh tài liệu mới, các hướng dẫn đánh giá có thể mới hơn bản RC; kết quả của RC chỉ chứng minh commit được ghi trong release.
 
-`git rev-parse HEAD` phải trùng đủ SHA ở trên. Detached HEAD là cách ghim bản thử; không dùng `git pull` để tự đổi phiên bản. Nếu đã có stack trên máy, đặt tên Compose và cặp cổng riêng theo [hướng dẫn cách ly](docs/INSTALL.md#hai-bản-clone-trên-cùng-máy) trước init/startup; đổi riêng thư mục không tách database.
+Ghi lại `git rev-parse HEAD` trước khi thử. Nếu reviewer được giao một SHA cụ thể, dùng `git fetch origin SHA` rồi `git switch --detach SHA` với giá trị thật trong lời mời; không tự `git pull` giữa lượt thử. Nếu đã có stack trên máy, đặt tên Compose và cặp cổng riêng theo [hướng dẫn cách ly](docs/INSTALL.md#hai-bản-clone-trên-cùng-máy) trước init/startup; đổi riêng thư mục không tách database.
 
 Đăng nhập thử bằng `reporter`, `coordinator`, `technician`, `approver` theo [hướng dẫn vai trò](docs/USER-GUIDE.md). Mỗi bản cài riêng có database riêng; để cùng bàn giao một hồ sơ giữa các thành viên, dùng [một môi trường chung](docs/SHARED-EVALUATION.md).
 
@@ -38,7 +37,7 @@ Xem [giới thiệu và đối chiếu giải pháp](docs/PROJECT-OVERVIEW.md), 
 
 ## Trạng thái
 
-Các nhánh sau RC2 có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát cùng các sửa lỗi nêu trên. Giai đoạn 7 có công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. Mã nằm trên chuỗi PR chờ review/merge; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
+Nhánh develop có nền tảng và các luồng G01/G02/G03, gói phiên bản, bằng chứng/đối soát cùng các sửa lỗi nêu trên. Giai đoạn 7 có công cụ nghiệm thu, backup/restore, giấy phép và đóng gói. PR tích hợp #49 thay thế chuỗi PR cũ; `main` chưa tự cập nhật. Phản hồi người dùng thật theo vai trò còn chờ; xem [ma trận giai đoạn 7](docs/verification/phase-7-acceptance.md).
 
 Bắt đầu: [cài từ source](docs/INSTALL.md), [người dùng](docs/USER-GUIDE.md), [demo xuyên suốt](docs/DEMO-SCRIPT.md), [backup/restore](docs/BACKUP-RESTORE.md), [giới hạn/bảo mật](SECURITY.md). Kỹ thuật: [giai đoạn 7](docs/PHASE-7.md), [gói v1/v2 và cách tạo gói](docs/PHASE-4.md), [G02](docs/PHASE-5.md), [G03](docs/PHASE-6.md), [bằng chứng/worker](docs/PHASE-3.md), [G01](docs/PHASE-2.md), [nền tảng](docs/PHASE-1.md), [OpenAPI](docs/openapi.yaml).
 

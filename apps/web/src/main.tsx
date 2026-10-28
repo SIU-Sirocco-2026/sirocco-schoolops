@@ -3,11 +3,24 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Keycloak from "keycloak-js";
+import "@tabler/core/dist/css/tabler.min.css";
 import "./workspace.css";
+import "./g01-workspace.css";
+import "./motion.css";
+import { useMotionArrival } from "./useMotionArrival.js";
+import {
+  IconBuilding,
+  IconTool,
+  IconLeaf,
+  IconShieldCheck,
+  IconPackage,
+  IconLogout,
+} from "@tabler/icons-react";
 import { Safety } from "./Safety.js";
 import { Environment } from "./Environment.js";
 import { Packs } from "./Packs.js";
 import { G01 } from "./G01.js";
+import { Home } from "./Home.js";
 import { authenticatedRequest } from "./http.js";
 import {
   defaultView,
@@ -61,15 +74,6 @@ function App() {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.view, location.caseId]);
-  const [reduceEffects, setReduceEffects] = useState(() => {
-    try {
-      const preference = localStorage.getItem("schoolops-reduce-effects");
-      if (preference !== null) return preference === "true";
-    } catch {
-      /* The interface also works when browser storage is unavailable. */
-    }
-    return window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
-  });
   const [user, setUser] = useState<User | null>(null);
   const mode = location.view ?? (user ? defaultView(user.roles) : "g01");
   const setMode = (view: View) => navigate(view);
@@ -80,6 +84,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const pageMotion = useMotionArrival(`${mode}:${ready}:${!!user}`);
   const [selected, setSelected] = useState<string | null>(null);
   const [operationKey, setOperationKey] = useState(() => crypto.randomUUID());
   const [refreshing, setRefreshing] = useState(false);
@@ -181,113 +186,150 @@ function App() {
   );
   return (
     <div
-      className={`workspace ${!user ? "guest-workspace" : ""} ${user && location.caseId && ["g01", "environment", "safety"].includes(mode) ? "has-open-case" : ""} ${reduceEffects ? "solid-effects" : ""}`}
+      className={`workspace workspace-modern workspace-${mode} ${!user ? "guest-workspace" : ""} ${user && location.caseId && ["g01", "environment", "safety"].includes(mode) ? "has-open-case" : ""}`}
     >
       <a className="skip-link" href="#workspace">
         Đến nội dung chính
       </a>
-      <aside className="sidebar">
-        <a className="brand" href="/" aria-label="SchoolOps trang chủ">
-          <span className="brand-symbol">S</span>
-          <span>
-            SchoolOps<small>SIROCCO</small>
-          </span>
-        </a>
-        <button
-          className="mobile-workspace-toggle"
-          aria-label="Không gian làm việc"
-          aria-controls="schoolops-navigation"
-          aria-expanded={mobileNavOpen}
-          onClick={() => setMobileNavOpen((open) => !open)}
-        >
-          Không gian <span aria-hidden="true">⌄</span>
-        </button>
-        <div className="workspace-label">
-          <span className="school-icon">SIU</span>
-          <span>
-            Trường học demo<small>Vận hành nội bộ</small>
-          </span>
-        </div>
-        <div className="nav-label">Không gian làm việc</div>
-        <nav
-          id="schoolops-navigation"
-          className={mobileNavOpen ? "mobile-open" : ""}
-          aria-label="Điều hướng"
-        >
-          <button
-            className={`nav-item ${mode === "g01" ? "active" : ""}`}
-            aria-current={mode === "g01" ? "page" : undefined}
-            onClick={() => setMode("g01")}
-          >
-            Sự cố cơ sở vật chất
-          </button>
-          {user?.roles.includes("admin") && (
-            <button
-              className={`nav-item ${mode === "packs" ? "active" : ""}`}
-              aria-current={mode === "packs" ? "page" : undefined}
-              onClick={() => setMode("packs")}
-            >
-              Gói nghiệp vụ
-            </button>
-          )}
-          {user?.roles.includes("environment_officer") && (
-            <button
-              className={`nav-item ${mode === "environment" ? "active" : ""}`}
-              aria-current={mode === "environment" ? "page" : undefined}
-              onClick={() => setMode("environment")}
-            >
-              Môi trường PM2.5
-            </button>
-          )}
-          {user?.roles.some((r) =>
-            ["safety_reporter", "safety_officer"].includes(r),
-          ) && (
-            <button
-              className={`nav-item ${mode === "safety" ? "active" : ""}`}
-              aria-current={mode === "safety" ? "page" : undefined}
-              onClick={() => setMode("safety")}
-            >
-              An toàn hạn chế
-            </button>
-          )}
+      {user && (
+        <aside className="sidebar">
+          <a className="brand" href="/" aria-label="SchoolOps trang chủ">
+            <img
+              className="brand-mark"
+              src="/brand/schoolops-mark.png"
+              alt=""
+              width="36"
+              height="36"
+            />
+            <span>
+              SchoolOps<small>SIROCCO</small>
+            </span>
+          </a>
           {user && (
-            <details
-              className="nav-tools"
-              open={mode === "foundation" || undefined}
+            <button
+              className="mobile-workspace-toggle"
+              aria-label="Không gian làm việc"
+              aria-controls="schoolops-navigation"
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen((open) => !open)}
             >
-              <summary>Công cụ kiểm tra</summary>
-              <button
-                className={`nav-item ${mode === "foundation" ? "active" : ""}`}
-                aria-current={mode === "foundation" ? "page" : undefined}
-                onClick={() => setMode("foundation")}
-              >
-                Nhiệm vụ nền tảng{" "}
-                <span className="count">
-                  {tasks.filter((t) => t.status !== "completed").length}
-                </span>
-              </button>
-            </details>
+              Không gian <span aria-hidden="true">⌄</span>
+            </button>
           )}
-        </nav>
-        <div className="sidebar-note">
-          <strong>Phối hợp xử lý sự cố</strong>
-          <p>Từ phản ánh ban đầu đến kết quả đã nghiệm thu.</p>
-        </div>
-        <div className="sidebar-footer">
-          <span className="avatar">{user?.name.charAt(0) || "S"}</span>
-          <div>
-            <strong>{user?.name || "Khách truy cập"}</strong>
-            <small>
-              {user
-                ? user.roles.map((role) => roleNames[role] || role).join(", ")
-                : "Chưa đăng nhập"}
-            </small>
+          <div className="workspace-label">
+            <span className="school-icon">
+              <IconBuilding size={20} aria-hidden="true" />
+            </span>
+            <span>
+              Trường học demo<small>Vận hành nội bộ</small>
+            </span>
           </div>
-        </div>
-      </aside>
+          <div className="nav-label">Không gian làm việc</div>
+          <nav
+            id="schoolops-navigation"
+            className={mobileNavOpen ? "mobile-open" : ""}
+            aria-label="Điều hướng"
+          >
+            <button
+              className={`nav-item ${mode === "g01" ? "active" : ""}`}
+              aria-current={mode === "g01" ? "page" : undefined}
+              onClick={() => setMode("g01")}
+            >
+              <IconTool size={19} aria-hidden="true" />
+              Sự cố cơ sở vật chất
+            </button>
+            {user?.roles.includes("admin") && (
+              <button
+                className={`nav-item ${mode === "packs" ? "active" : ""}`}
+                aria-current={mode === "packs" ? "page" : undefined}
+                onClick={() => setMode("packs")}
+              >
+                <IconPackage size={19} aria-hidden="true" />
+                Gói nghiệp vụ
+              </button>
+            )}
+            {user?.roles.includes("environment_officer") && (
+              <button
+                className={`nav-item ${mode === "environment" ? "active" : ""}`}
+                aria-current={mode === "environment" ? "page" : undefined}
+                onClick={() => setMode("environment")}
+              >
+                <IconLeaf size={19} aria-hidden="true" />
+                Môi trường PM2.5
+              </button>
+            )}
+            {user?.roles.some((r) =>
+              ["safety_reporter", "safety_officer"].includes(r),
+            ) && (
+              <button
+                className={`nav-item ${mode === "safety" ? "active" : ""}`}
+                aria-current={mode === "safety" ? "page" : undefined}
+                onClick={() => setMode("safety")}
+              >
+                <IconShieldCheck size={19} aria-hidden="true" />
+                An toàn hạn chế
+              </button>
+            )}
+            {user && (
+              <details
+                className="nav-tools"
+                open={mode === "foundation" || undefined}
+              >
+                <summary>Công cụ kiểm tra</summary>
+                <button
+                  className={`nav-item ${mode === "foundation" ? "active" : ""}`}
+                  aria-current={mode === "foundation" ? "page" : undefined}
+                  onClick={() => setMode("foundation")}
+                >
+                  Nhiệm vụ nền tảng{" "}
+                  <span className="count">
+                    {tasks.filter((t) => t.status !== "completed").length}
+                  </span>
+                </button>
+              </details>
+            )}
+          </nav>
+          <div className="sidebar-footer">
+            <span className="avatar">{user?.name.charAt(0) || "S"}</span>
+            <div>
+              <strong>{user?.name || "Khách truy cập"}</strong>
+              <small>
+                {user
+                  ? user.roles.map((role) => roleNames[role] || role).join(", ")
+                  : "Chưa đăng nhập"}
+              </small>
+            </div>
+          </div>
+        </aside>
+      )}
       <main id="workspace" tabIndex={-1}>
         <header className="topbar">
-          <span>
+          {!user && (
+            <>
+              <a
+                className="brand home-brand"
+                href="/"
+                aria-label="SchoolOps trang chủ"
+              >
+                <img
+                  className="brand-mark"
+                  src="/brand/schoolops-mark.png"
+                  alt=""
+                  width="36"
+                  height="36"
+                />
+                <span>SchoolOps</span>
+              </a>
+              <nav
+                className="home-header-links"
+                aria-label="Giới thiệu SchoolOps"
+              >
+                <a href="#home-spaces">Tính năng</a>
+                <a href="#home-access">Bắt đầu sử dụng</a>
+              </nav>
+            </>
+          )}
+          <span hidden={!user}>
             SchoolOps <span className="slash">/</span>{" "}
             {mode === "environment"
               ? "Môi trường PM2.5"
@@ -300,29 +342,18 @@ function App() {
                     : "Nhiệm vụ nền tảng"}
           </span>
           <div className="topbar-tools">
+            {user && (
+              <span className="topbar-user">
+                <strong>{user.name}</strong>
+                <small>
+                  {user.roles.map((role) => roleNames[role] || role).join(", ")}
+                </small>
+              </span>
+            )}
             <span className="env-badge">
               <span className="small-dot" />
               Môi trường demo
             </span>
-            <button
-              className="appearance-control"
-              aria-pressed={reduceEffects}
-              title="Dùng nền đặc để giảm hiệu ứng trong suốt"
-              onClick={() => {
-                const next = !reduceEffects;
-                setReduceEffects(next);
-                try {
-                  localStorage.setItem(
-                    "schoolops-reduce-effects",
-                    String(next),
-                  );
-                } catch {
-                  /* Session-only preference. */
-                }
-              }}
-            >
-              Giảm hiệu ứng
-            </button>
             {user && (
               <button
                 className="text-button logout-control"
@@ -330,13 +361,14 @@ function App() {
                   void keycloak.logout({ redirectUri: window.location.origin })
                 }
               >
+                <IconLogout size={17} aria-hidden="true" />
                 Đăng xuất
               </button>
             )}
           </div>
         </header>
-        <div className="page">
-          <div className="page-heading">
+        <div className="page" ref={pageMotion}>
+          <div className="page-heading" hidden={!user}>
             <div>
               <div className="eyebrow">
                 {user ? "Vận hành trường học" : "SchoolOps / Đăng nhập"}
@@ -363,7 +395,9 @@ function App() {
                         ? "Kiểm tra kết quả xử lý và bằng chứng trước khi nghiệm thu."
                         : user.roles.includes("coordinator")
                           ? "Xác minh phản ánh, giao người xử lý và theo dõi hạn hoàn thành."
-                          : "Báo sự cố và theo dõi tiến độ trên cùng một mã hồ sơ."
+                          : user.roles.includes("admin")
+                            ? "Tài khoản quản trị quản lý gói nghiệp vụ và không có quyền đọc nội dung hồ sơ."
+                            : "Báo sự cố và theo dõi tiến độ trên cùng một mã hồ sơ."
                     : mode === "safety"
                       ? "Theo dõi phản ánh trong phạm vi bạn được cấp quyền."
                       : mode === "environment"
@@ -390,61 +424,16 @@ function App() {
               Đang kết nối dịch vụ và kiểm tra phiên đăng nhập…
             </div>
           ) : !user ? (
-            <section className="welcome panel">
-              <div>
-                <span className="welcome-kicker">
-                  Dành cho người báo, điều phối và kỹ thuật
-                </span>
-                <h2>Vào không gian làm việc</h2>
-                <p>
-                  Đăng nhập bằng tài khoản được cấp. Hệ thống hiển thị hồ sơ và
-                  thao tác theo vai trò của bạn.
-                </p>
-                <button
-                  className="button primary"
-                  disabled={!ready}
-                  onClick={() =>
-                    void keycloak.login({
-                      redirectUri: window.location.href.split("#")[0],
-                      locale: "vi",
-                    })
-                  }
-                >
-                  Đăng nhập vào SchoolOps <span aria-hidden="true">→</span>
-                </button>
-                {!ready && (
-                  <button
-                    className="button secondary"
-                    onClick={() => window.location.reload()}
-                  >
-                    Kết nối lại
-                  </button>
-                )}
-              </div>
-              <div className="welcome-steps">
-                <div>
-                  <span>01</span>
-                  <div>
-                    <strong>Ghi nhận</strong>
-                    <p>Phản ánh sự cố, giữ mã để theo dõi.</p>
-                  </div>
-                </div>
-                <div>
-                  <span>02</span>
-                  <div>
-                    <strong>Phối hợp</strong>
-                    <p>Giao việc, cập nhật kết quả và bằng chứng.</p>
-                  </div>
-                </div>
-                <div>
-                  <span>03</span>
-                  <div>
-                    <strong>Nghiệm thu</strong>
-                    <p>Kiểm tra kết quả trước khi đóng hồ sơ.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <Home
+              ready={ready}
+              login={() =>
+                void keycloak.login({
+                  redirectUri: window.location.href.split("#")[0],
+                  locale: "vi",
+                })
+              }
+              reconnect={() => window.location.reload()}
+            />
           ) : mode === "safety" ? (
             <Safety request={request} />
           ) : mode === "environment" ? (

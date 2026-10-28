@@ -12,7 +12,7 @@ const env = Object.fromEntries(
     }),
 );
 async function login(page: Page, username: string) {
-  await page.goto("/");
+  await page.goto("/?view=foundation");
   await page.getByRole("button", { name: /Đăng nhập vào SchoolOps/ }).click();
   await page.getByLabel(/Username|Tên đăng nhập/).fill(username);
   await page
@@ -21,11 +21,15 @@ async function login(page: Page, username: string) {
   await page
     .getByRole("button", { name: /Sign In|Đăng nhập/, exact: true })
     .click();
-  await page.getByText("Công cụ kiểm tra", { exact: true }).click();
-  await page.getByRole("button", { name: /^Nhiệm vụ nền tảng/ }).click();
   await expect(
     page.getByRole("heading", { name: "Công việc của tôi", exact: true }),
   ).toBeVisible();
+  await expect(page).toHaveURL(/view=foundation/);
+  await expect(page.locator(".workspace")).toHaveClass(/workspace-foundation/);
+  await expect(page.locator(".sidebar")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
 }
 
 async function logout(page: Page) {
@@ -51,6 +55,16 @@ test("browser → Identity → gateway → API → database → Flowable task �
     techPage = await technician.newPage();
   const title = `Nhiệm vụ trình duyệt ${Date.now()}`;
   await login(reporterPage, "reporter");
+  await reporterPage.reload();
+  await expect(
+    reporterPage.getByRole("heading", {
+      name: "Công việc của tôi",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(reporterPage.locator(".workspace")).toHaveClass(
+    /workspace-foundation/,
+  );
   await reporterPage.getByLabel("Nội dung nhiệm vụ").fill(title);
   await reporterPage.getByRole("button", { name: /Tạo nhiệm vụ/ }).click();
   await expect(
@@ -84,6 +98,12 @@ test("browser → Identity → gateway → API → database → Flowable task �
   await expect(
     techPage.getByRole("heading", { name: "Công việc của tôi", exact: true }),
   ).toBeVisible();
+  const mobileRow = techPage.locator(".task-row").first();
+  const copyBox = await mobileRow.locator(".task-copy").boundingBox();
+  const stateBox = await mobileRow.locator(".status").boundingBox();
+  expect(stateBox!.x).toBeGreaterThanOrEqual(copyBox!.x - 1);
+  expect(stateBox!.y).toBeGreaterThanOrEqual(copyBox!.y + copyBox!.height);
+  expect(stateBox!.width).toBeGreaterThan(60);
   expect(
     await techPage.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

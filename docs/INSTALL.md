@@ -4,12 +4,11 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
-Các lệnh dưới lấy nhánh `fix/giu-nhap-khi-doc-loi` và ghim source `4be87bb7eb77df5da57c5966eca20a45bc07f650` đã có [full CI đạt](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/actions/runs/40633098387), gồm 77 nhóm tích hợp, 25 browser và restore/audit/đóng gói. Cùng source có 25 browser Windows đạt; chưa có nghiệm thu người dùng thật. Nhánh chứa toàn bộ ứng dụng; `main` còn chờ review/merge. Muốn tái lập RC2 cũ, clone với `--branch v0.1.0-rc.2` và bỏ bước switch sang SHA mới; tag giữ giao diện trước đợt chỉnh UI/UX.
+Các lệnh dưới lấy nhánh `develop`, chứa toàn bộ ứng dụng và giao diện mới. Ghi SHA trước khi chạy; nếu nhận bộ hướng dẫn review có SHA cố định, fetch và checkout đúng SHA đó trước cài đặt. Kiểm tra CI của chính commit đang thử, không dùng kết quả bản cũ để chứng minh bản mới. `main` còn chờ review/merge ở PR #49. Muốn tái lập RC2 cũ, clone với `--branch v0.1.0-rc.2`; tag giữ giao diện trước đợt chỉnh UI/UX.
 
 ```powershell
-git clone --branch fix/giu-nhap-khi-doc-loi --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch develop --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
-git switch --detach 4be87bb7eb77df5da57c5966eca20a45bc07f650
 git rev-parse HEAD
 pnpm install --frozen-lockfile
 pnpm demo:init
@@ -18,7 +17,7 @@ pnpm demo:users
 pnpm demo:verify
 ```
 
-Kiểm HEAD trùng đủ SHA trước khi chạy. Detached HEAD giữ bản thử cố định; chỉ đổi sang SHA mới khi đội cung cấp mốc đã kiểm, không dùng `git pull` để tự nâng. Nếu máy đã có bản cài khác, làm phần cách ly bên dưới trước init/startup. Metadata version các nhánh hiện còn 0.1.0-rc.2; kiểm sourceRevision để phân biệt với tag/asset RC2 cũ.
+Nếu cần ghim lượt review, chạy `git fetch origin SHA` và `git switch --detach SHA`, thay SHA bằng giá trị đầy đủ trong bộ bàn giao, rồi kiểm `git rev-parse HEAD`. Không dùng `git pull` giữa lượt đánh giá. Nếu máy đã có bản cài khác, làm phần cách ly bên dưới trước init/startup. Metadata version hiện còn 0.1.0-rc.2; kiểm sourceRevision để phân biệt với tag/asset RC2 cũ.
 
 Nếu dùng source archive, kiểm tra `SHA256SUMS` của release và giải nén vào thư mục mới nằm ngoài mọi Git checkout. Chạy `pnpm install --frozen-lockfile`, `pnpm demo:init`, `pnpm demo:up` và `pnpm demo:users`. Với archive không có Git metadata, kiểm tra `GET /api/health/ready` trả `ready` và `GET /api/config` có `sourceRevision` khớp tệp `SOURCE-REVISION`, version khớp release; sau đó thử UI theo user guide.
 

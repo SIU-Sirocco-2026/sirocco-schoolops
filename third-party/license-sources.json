@@ -1,4 +1,12 @@
 {
+  "@tabler/core@1.7.1": {
+    "license": "MIT",
+    "repository": "git+https://github.com/tabler/tabler.git",
+    "sourceUrl": "https://raw.githubusercontent.com/tabler/tabler/07f60c07da13d8ff957a370434b7ef5c86f5ab94/LICENSE",
+    "file": "third-party/licenses/tabler-core-1.7.1.txt",
+    "sha256": "32cdc07861d353e3146385c99894ca4bc11536a078d62f957af22a9c64942e42",
+    "reason": "The npm archive declares MIT but omits LICENSE. Retrieved from the commit referenced by the annotated upstream @tabler/core@1.7.1 tag."
+  },
   "@nodable/entities@2.2.0": {
     "license": "MIT",
     "repository": "git+https://github.com/nodable/val-parsers.git",

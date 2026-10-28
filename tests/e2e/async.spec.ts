@@ -195,9 +195,8 @@ test("pending polling pauses for hidden state and stops when the real ready proj
     });
     await page.waitForTimeout(3500);
     expect(reads).toBe(1);
-    // Changing filters during reconciliation must not let an old polling closure restore them.
-    await page.getByLabel("Trạng thái", { exact: true }).selectOption("closed");
-    await expect(page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true })).toBeVisible();
+    // The dedicated case screen keeps list filters out of the current task.
+    await expect(page.getByLabel("Trạng thái", { exact: true })).toBeHidden();
     const listReadsBeforeVisible = listQueries.length;
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, value: false });
@@ -206,9 +205,12 @@ test("pending polling pauses for hidden state and stops when the real ready proj
     await expect(page.getByText("Yêu cầu đã được lưu.", { exact: false })).toHaveCount(0);
     expect(reads).toBe(2);
     await expect.poll(() => listQueries.length).toBeGreaterThan(listReadsBeforeVisible);
-    expect(listQueries.slice(listReadsBeforeVisible).every(status => status === "closed")).toBe(true);
+    expect(listQueries.slice(listReadsBeforeVisible).every(status => status === "")).toBe(true);
     await page.waitForTimeout(3500);
     expect(reads).toBe(2);
+    await page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true }).click();
+    await page.getByLabel("Trạng thái", { exact: true }).selectOption("closed");
+    await expect(page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true })).toBeVisible();
   } finally {
     await page.evaluate(() => { delete (document as unknown as { hidden?: boolean }).hidden; });
     await page.unrouteAll({ behavior: "wait" });

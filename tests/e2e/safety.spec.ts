@@ -21,13 +21,25 @@ async function login(page: Page, user: string) {
   await expect(
     page.getByRole("button", { name: "Đăng xuất", exact: true }),
   ).toBeVisible();
-  if (user !== "reporter")
+  if (user !== "reporter") {
+    const nav = page.getByRole("navigation", {
+      name: "Điều hướng",
+      exact: true,
+    });
+    if (!(await nav.isVisible()))
+      await page
+        .getByRole("button", { name: "Không gian làm việc", exact: true })
+        .click();
     await page
       .getByRole("button", { name: "An toàn hạn chế", exact: true })
       .click();
+  }
 }
 async function open(page: Page, title: string) {
-  const back = page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true });
+  const back = page.getByRole("button", {
+    name: "Về danh sách hồ sơ",
+    exact: true,
+  });
   if (await back.isVisible()) await back.click();
   await page.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
@@ -46,7 +58,9 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
     [r, s, a, outsider] = await Promise.all(contexts.map((c) => c.newPage()));
   const title = `Kiểm tra vật cản hành lang giả lập ${Date.now()}`;
   await login(r!, "safety_reporter");
-  await r!.getByRole("button", { name: "Phản ánh an toàn mới", exact: true }).click();
+  await r!
+    .getByRole("button", { name: "Phản ánh an toàn mới", exact: true })
+    .click();
   await r!.getByLabel("Tiêu đề phản ánh", { exact: true }).fill(title);
   await r!.getByLabel("Thiết bị", { exact: true }).selectOption("");
   await r!
@@ -112,6 +126,15 @@ test("three safety roles complete a restricted case with shared UI, clean eviden
   ).toBeEnabled({ timeout: 90000 });
   await s!.getByRole("button", { name: "Gửi nghiệm thu", exact: true }).click();
   await login(a!, "safety_reviewer");
+  await a!
+    .getByRole("button", { name: `Mở thông báo ${code}`, exact: true })
+    .first()
+    .click();
+  await expect(a!.locator(".case-code")).toHaveText(code);
+  await a!
+    .getByRole("button", { name: "Về danh sách hồ sơ", exact: true })
+    .click();
+  await expect(a!.locator(".case-code")).toHaveCount(0);
   await a!
     .getByRole("button", { name: `Mở thông báo ${code}`, exact: true })
     .first()

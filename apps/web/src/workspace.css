@@ -173,6 +173,7 @@ pre {
   font-size: 27px;
   font-family: Georgia, serif;
 }
+.brand-mark { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
 .brand small {
   display: block;
   color: #c0d2c5;
@@ -364,6 +365,12 @@ pre {
   padding: 30px 26px 20px;
   max-width: 1600px;
   margin: 0 auto;
+}
+/* The workspace owns its shell; Tabler's full-height .page shell would
+   overflow below our separate topbar and leave a blank document tail. */
+.workspace .page {
+  display: block;
+  min-height: 0;
 }
 .page-heading {
   display: flex;
@@ -1675,22 +1682,22 @@ details summary {
 @supports (
   (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {
-  .workspace:not(.solid-effects) .sidebar {
+  .workspace:not(.solid-effects):not(.workspace-modern) .sidebar {
     background: linear-gradient(160deg, #244f3fef, #14392ff5);
     -webkit-backdrop-filter: blur(14px) saturate(110%);
     backdrop-filter: blur(14px) saturate(110%);
   }
-  .workspace:not(.solid-effects) .topbar {
+  .workspace:not(.solid-effects):not(.workspace-modern) .topbar {
     background: #ffffffed;
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .workspace .sidebar {
+  .workspace:not(.workspace-modern) .sidebar {
     background: #183f32 !important;
   }
-  .workspace .topbar {
+  .workspace:not(.workspace-modern) .topbar {
     background: #f9fcfa !important;
   }
   .workspace .sidebar,

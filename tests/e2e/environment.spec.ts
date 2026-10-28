@@ -38,6 +38,17 @@ test("officer traces PM2.5 raw data and closes shared case with clean evidence o
       exact: true,
     })
     .click();
+  await expect(page.locator(".case-code")).toHaveText(row.code);
+  await page
+    .getByRole("button", { name: "Về danh sách hồ sơ", exact: true })
+    .click();
+  await expect(page.locator(".case-code")).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: `Truy nguồn và mở hồ sơ ${row.code}`,
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole("region", { name: "Truy nguồn cảnh báo" }),
   ).toContainText("pm25-demo@1.0.0");

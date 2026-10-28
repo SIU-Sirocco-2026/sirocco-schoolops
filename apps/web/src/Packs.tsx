@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // See LICENSE and NOTICE in the repository root.
 import { useEffect, useState } from "react";
+import { IconPackage, IconRefresh } from "@tabler/icons-react";
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 type Revision = {
   id: string;
@@ -23,30 +24,53 @@ export function Packs({ request }: { request: Request }) {
       items: [],
       events: [],
     }),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true);
   async function refresh() {
+    setLoading(true);
     try {
       setData(await request("/api/packs"));
       setError("");
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   }
   useEffect(() => {
     void refresh();
   }, []);
   return (
-    <section className="panel packs">
+    <section className="panel packs" aria-busy={loading}>
       <div className="section-heading">
-        <h2>Gói nghiệp vụ</h2>
-        <button className="button secondary" onClick={() => void refresh()}>
+        <h2>
+          <IconPackage size={21} aria-hidden="true" />
+          Gói nghiệp vụ
+        </h2>
+        <button
+          className="button secondary"
+          disabled={loading}
+          onClick={() => void refresh()}
+        >
+          <IconRefresh size={16} aria-hidden="true" />
           Làm mới gói
         </button>
       </div>
-      <p>
-        Phiên bản đã nạp giữ nguyên nội dung. Hồ sơ mới dùng bản đang kích hoạt;
-        hồ sơ cũ tiếp tục với bản đã gắn.
-      </p>
+      <details className="module-help">
+        <summary>Cách sử dụng phiên bản</summary>
+        <p>
+          Phiên bản đã nạp giữ nguyên nội dung. Hồ sơ mới dùng bản đang kích
+          hoạt; hồ sơ cũ tiếp tục với bản đã gắn.
+        </p>
+      </details>
+      {loading && (
+        <p className="module-status" role="status">
+          Đang tải gói nghiệp vụ…
+        </p>
+      )}
+      {!loading && !error && !data.items.length && (
+        <p className="module-empty">Chưa có gói nghiệp vụ.</p>
+      )}
       {error && (
         <p className="message error" role="alert">
           {error}

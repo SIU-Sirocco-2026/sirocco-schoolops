@@ -22,18 +22,31 @@ async function login(page: Page, username: string) {
     .getByRole("button", { name: /Sign In|Đăng nhập/, exact: true })
     .click();
   if (username === "admin") {
-    await expect(page.getByRole("heading", { name: "Gói nghiệp vụ", level: 1 })).toBeVisible();
-    await page.getByRole("button", { name: "Sự cố cơ sở vật chất", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Gói nghiệp vụ", level: 1 }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Sự cố cơ sở vật chất", exact: true })
+      .click();
   }
   await expect(
     page.getByRole("heading", { name: "Sự cố cơ sở vật chất", exact: true }),
   ).toBeVisible();
 }
 async function open(page: Page, title: string) {
-  const back = page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true });
+  const back = page.getByRole("button", {
+    name: "Về danh sách hồ sơ",
+    exact: true,
+  });
   if (await back.isVisible()) await back.click();
   const mine = page.getByLabel("Công việc của tôi", { exact: true });
-  if (await mine.isChecked()) await mine.uncheck();
+  if (await mine.isChecked()) {
+    if (!(await mine.isVisible()))
+      await page
+        .getByRole("button", { name: "Bộ lọc hồ sơ", exact: true })
+        .click();
+    await mine.uncheck();
+  }
   await page.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
   await page.getByRole("button").filter({ hasText: title }).click();
@@ -140,6 +153,7 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   ).toHaveCount(0);
   await login(c, "coordinator");
   await open(c, title);
+  await c.locator(".return-action summary").click();
   await c
     .getByLabel("Lý do trả lại", { exact: true })
     .fill("Cần bổ sung trạng thái đèn nguồn và cổng HDMI.");
@@ -168,7 +182,9 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   await c.getByRole("button", { name: "Giao xử lý", exact: true }).click();
   await state(c, "Chờ nhận việc");
   await login(t, "technician");
-  await expect(t.getByLabel("Công việc của tôi", { exact: true })).toBeChecked();
+  await expect(
+    t.getByLabel("Công việc của tôi", { exact: true }),
+  ).toBeChecked();
   await expect(t.getByRole("button").filter({ hasText: title })).toBeVisible();
   await open(t, title);
   await t.getByRole("button", { name: "Nhận xử lý", exact: true }).click();
@@ -196,6 +212,7 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
   ).toHaveCount(0);
   await login(a, "approver");
   await open(a, title);
+  await a.locator(".return-action summary").click();
   await a
     .getByLabel("Lý do trả lại", { exact: true })
     .fill("Hình còn chớp; cần chạy thử liên tục lâu hơn.");
@@ -239,10 +256,16 @@ test("G01 four browser roles complete both return loops with timeline, deadline 
     path: "test-results/g01-desktop-closed.png",
     fullPage: true,
   });
+  await r
+    .getByRole("button", { name: "Về danh sách hồ sơ", exact: true })
+    .click();
+  await r.getByRole("button", { name: "Tổng quan", exact: true }).click();
   await r.getByRole("button", { name: /^Hoàn thành/ }).click();
-  await expect(r.getByRole("button", { name: /^Hoàn thành/ })).toHaveAttribute(
-    "aria-pressed",
-    "true",
+  await expect(
+    r.getByRole("button", { name: "Hồ sơ", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(r.locator(".filter-summary")).toContainText(
+    "Đang xem: Hoàn thành",
   );
   await r.getByLabel("Tìm hồ sơ", { exact: true }).fill(title);
   await r.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
@@ -260,10 +283,17 @@ test("technical admin cannot see G01 content or create cases through the UI", as
     page.getByRole("button", { name: "Báo sự cố mới", exact: true }),
   ).toHaveCount(0);
   await expect(page.locator(".task-list li")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
   for (const label of ["Tất cả", "Đang mở", "Quá hạn", "Hoàn thành"])
     await expect(
-      page.getByRole("button", { name: `${label} 0`, exact: true }),
+      page
+        .getByRole("region", { name: "Báo cáo hồ sơ", exact: true })
+        .getByRole("button", { name: new RegExp(`^${label} 0`) }),
     ).toBeVisible();
+  await page.getByRole("button", { name: "Hồ sơ", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Chưa có hồ sơ phù hợp", exact: true }),
   ).toBeVisible();
