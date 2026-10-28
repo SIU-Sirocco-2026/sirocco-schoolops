@@ -113,8 +113,32 @@ test("unsaved work and a selected file can cancel case exit or revision refresh,
   expect(dialogs.length).toBe(2);
   await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toHaveValue(draft);
   accept = true;
-  await page.getByRole("button", { name: "Làm mới hồ sơ", exact: true }).click();
+  let release!: () => void, seen!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const requested = new Promise<void>(resolve => { seen = resolve; });
+  const pattern = `**/api/g01/cases/${row.id}`;
+  await page.route(pattern, async route => {
+    // Hold only a real read response. Mutations still reach the application.
+    const response = await route.fetch();
+    seen();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole("button", { name: "Làm mới hồ sơ", exact: true }).click();
+    await requested;
+    await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toBeDisabled();
+    await expect(page.getByLabel("Kết quả xử lý", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Chọn tệp", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Tải bằng chứng", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Đang làm mới hồ sơ…", exact: true })).toBeDisabled();
+  } finally {
+    release();
+    await page.unrouteAll({ behavior: "wait" });
+  }
   await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toHaveValue("Kết quả đã lưu từ client khác.");
+  await expect(page.getByLabel("Biện pháp xử lý", { exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Chọn tệp", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Về danh sách hồ sơ", exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.has("case")).toBe(false);
 });

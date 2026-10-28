@@ -154,6 +154,7 @@ export function G01({
   const creationSaved = useUnsavedChanges(JSON.stringify(form) !== JSON.stringify(initial), { view: caseViews[prefix]! });
   const [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
+    [refreshing, setRefreshing] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const generation = useRef(0),
@@ -308,6 +309,7 @@ export function G01({
   }, [selected, detail?.item.syncStatus]);
   async function refresh(discardAccepted = false) {
     const selection = selected;
+    setRefreshing(true);
     setError("");
     setPollError("");
     setNotice("");
@@ -319,6 +321,8 @@ export function G01({
         setError((e as Error).message);
         setDetail(null);
       }
+    } finally {
+      setRefreshing(false);
     }
   }
   async function create(event: React.FormEvent) {
@@ -552,7 +556,7 @@ export function G01({
           className="button secondary"
           type="button"
           data-list-refresh
-          disabled={busy || loading}
+          disabled={busy || loading || refreshing}
           onClick={() => { if (confirmCaseRefresh(caseViews[prefix]!, selected)) void refresh(true); }}
         >
           Làm mới hồ sơ
@@ -648,7 +652,7 @@ export function G01({
           <div className="section-heading">
             <h2>Chi tiết hồ sơ</h2>
             {selected && (<div className="detail-tools">
-              <button type="button" className="text-button" disabled={busy || loading} onClick={() => { if (confirmCaseRefresh(caseViews[prefix]!, selected)) void refresh(true); }}>Làm mới hồ sơ</button>
+              <button type="button" className="text-button" disabled={busy || loading || refreshing} onClick={() => { if (confirmCaseRefresh(caseViews[prefix]!, selected)) void refresh(true); }}>{refreshing ? "Đang làm mới hồ sơ…" : "Làm mới hồ sơ"}</button>
               <button
                 type="button"
                 className="button secondary case-list-return"
@@ -776,6 +780,7 @@ export function G01({
                 prefix={prefix}
                 policy={detail.item.evidencePolicy.submit}
                 onReady={setEvidenceReady}
+                disabled={busy || refreshing}
               />
               {detail.item.syncStatus !== "ready" ? (
                 <p className="message error">
@@ -789,7 +794,7 @@ export function G01({
                     key={`${detail.item.id}:${detail.item.revision}`}
                     item={detail.item}
                     catalog={catalog}
-                    busy={busy}
+                    busy={busy || refreshing}
                     act={act}
                     evidenceReady={evidenceReady}
                     prefix={prefix}
@@ -1053,6 +1058,7 @@ function Actions({
             Lý do đóng sau xác minh
             <textarea
               aria-label="Lý do đóng sau xác minh"
+              disabled={busy}
               required
               minLength={5}
               value={reason}
@@ -1246,6 +1252,7 @@ function Actions({
               Lý do đóng hồ sơ
               <textarea
                 aria-label="Lý do đóng hồ sơ"
+                disabled={busy}
                 value={reason}
                 minLength={5}
                 onChange={(e) => setReason(e.target.value)}

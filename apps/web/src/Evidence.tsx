@@ -35,8 +35,10 @@ export function Evidence({
   onReady,
   policy,
   prefix = "g01",
+  disabled = false,
 }: {
   prefix?: string;
+  disabled?: boolean;
   request: Request;
   caseId: string;
   taskId: string | null;
@@ -115,7 +117,7 @@ export function Evidence({
   }, [caseId, taskId, prefix, refreshIndex, policy.minClean, mimeTypesKey]);
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || validationError || uploading.current) return;
+    if (!file || validationError || uploading.current || disabled) return;
     if (!taskId) {
       setError("Chưa xác định được vòng xử lý. Làm mới hồ sơ trước khi tải tệp.");
       return;
@@ -182,7 +184,7 @@ export function Evidence({
       )}
       {notice && <p role="status" className="message success">{notice}</p>}
       {readError && <p role="alert" className="message error">{readError}</p>}
-      <button type="button" className="text-button" disabled={busy || reading}
+      <button type="button" className="text-button" disabled={busy || reading || disabled}
         onClick={() => setRefreshIndex((n) => n + 1)}>
         {reading ? "Đang làm mới bằng chứng…" : "Làm mới bằng chứng"}
       </button>
@@ -206,14 +208,14 @@ export function Evidence({
             aria-describedby={`evidence-help-${caseId}${validationError ? ` evidence-error-${caseId}` : ""}`}
             aria-invalid={!!validationError || undefined}
             required
-            disabled={busy}
+            disabled={busy || disabled}
             onChange={(e) => {
               setFile(e.target.files?.[0] || null);
               setError("");
               key.current = crypto.randomUUID();
             }}
           />
-          <button type="button" className="button secondary file-picker-button" disabled={busy} onClick={() => input.current?.click()}>Chọn tệp</button>
+          <button type="button" className="button secondary file-picker-button" disabled={busy || disabled} onClick={() => input.current?.click()}>Chọn tệp</button>
           <span className="file-name" aria-live="polite">{file?.name || "Chưa chọn tệp"}</span>
           </div>
           <p className="field-help" id={`evidence-help-${caseId}`}>
@@ -230,7 +232,7 @@ export function Evidence({
           )}
           <button
             className="button secondary"
-            disabled={busy || !file || !!validationError}
+            disabled={busy || disabled || !file || !!validationError}
           >
             {busy ? "Đang tải tệp…" : "Tải bằng chứng"}
           </button>

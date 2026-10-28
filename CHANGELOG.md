@@ -4,6 +4,7 @@
 
 - Cảnh báo khi form tạo, thao tác case hoặc tệp mới chọn có thể bị bỏ bởi chuyển view/case, Back/Forward trong history app hoặc reload. Từ chối giữ nội dung và focus; form sạch hoặc route không làm mất form không hỏi thừa. Không lưu bản nháp G03 vào browser storage.
 - POST tạo/upload được server nhận được đánh dấu sạch đúng thời điểm. Khi đọc thấy revision mới trong lúc còn sửa, giữ nội dung và báo cần chủ động làm mới; không âm thầm ghi đè dữ liệu người khác. Manual refresh hỏi trước khi có thể remount form.
+- Trong lúc làm mới hồ sơ hoặc gửi thao tác, tạm khóa các ô thao tác và vùng chọn/tải bằng chứng, tránh nhận nội dung mới ngay trước khi phản hồi cũ thay form. Mở lại sau khi đọc xong; không tự gửi lại yêu cầu.
 
 ## Chưa phát hành — client HTTP độc lập
 
