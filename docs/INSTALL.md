@@ -4,7 +4,7 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
-Các lệnh dưới lấy nhánh `develop`, chứa toàn bộ ứng dụng và giao diện mới. Ghi SHA trước khi chạy; nếu nhận bộ hướng dẫn review có SHA cố định, fetch và checkout đúng SHA đó trước cài đặt. Kiểm tra CI của chính commit đang thử, không dùng kết quả bản cũ để chứng minh bản mới. `main` còn chờ review/merge ở PR #49. Muốn tái lập RC2 cũ, clone với `--branch v0.1.0-rc.2`; tag giữ giao diện trước đợt chỉnh UI/UX.
+Các lệnh dưới lấy nhánh `develop`, chứa toàn bộ ứng dụng và giao diện mới. Ghi SHA trước khi chạy; nếu nhận bộ hướng dẫn review có SHA cố định, fetch và checkout đúng SHA đó trước cài đặt. Kiểm tra CI của chính commit đang thử, không dùng kết quả bản cũ để chứng minh bản mới. `main` còn chờ review/merge ở PR #50. Muốn tái lập RC2 cũ, clone với `--branch v0.1.0-rc.2`; tag giữ giao diện trước đợt chỉnh UI/UX.
 
 ```powershell
 git clone --branch develop --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git

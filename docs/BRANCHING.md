@@ -12,7 +12,7 @@ Tên nhánh dùng tiếng Anh, chữ thường và dấu gạch nối. Commit v�
 
 ## Đợt thu gọn hiện tại
 
-`review/ung-vien-tich-hop` được đổi thành `develop`. PR #49 là nơi review bản tích hợp vào main; chuỗi PR phụ thuộc cũ được đóng vì đã nằm trong bản tích hợp, không được trình bày là đã có đồng đội approve. Các commit của chúng vẫn truy được qua develop và các PR đã đóng.
+`review/ung-vien-tich-hop` được đổi thành `develop`. GitHub đóng PR #49 khi đổi tên nhánh nguồn; PR #50 thay thế để review bản tích hợp vào main. Chuỗi PR phụ thuộc cũ được đóng vì đã nằm trong bản tích hợp, không được trình bày là đã có đồng đội approve. Các commit của chúng vẫn truy được qua develop và các PR đã đóng.
 
 Hai nhánh thử nghiệm `feat/phase-1-foundation` và `feat/phase-2-g01` thuộc lịch sử trước đợt tách commit, được giữ bằng tag `archive/phase-1-foundation` và `archive/phase-2-g01`. Các tag phát hành `v0.1.0-rc.1`, `v0.1.0-rc.2` và tài sản release cũ được giữ nguyên.
 
@@ -22,4 +22,4 @@ Không rewrite lịch sử, force-push hoặc xóa commit riêng của người 
 
 Gửi link cây nguồn theo SHA đầy đủ và hướng dẫn cài cùng phiên bản. Người nhận ghi SHA khi bắt đầu và không tự pull giữa lượt review. Nhiều commit có thể cùng version `0.1.0-rc.2`; `sourceRevision` từ `/api/config` mới phân biệt được bản đang chạy.
 
-CI đạt là bằng chứng kỹ thuật. PR #49 còn chờ review trước khi merge main; phản hồi người dùng được ghi riêng, không tự điền từ kiểm thử tự động.
+CI đạt là bằng chứng kỹ thuật. PR #50 còn chờ review trước khi merge main; phản hồi người dùng được ghi riêng, không tự điền từ kiểm thử tự động.
