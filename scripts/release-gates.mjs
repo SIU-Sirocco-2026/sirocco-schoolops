@@ -10,6 +10,7 @@ export const integrationCounts = {
   "phase6-integration": 8,
   "phase7-integration": 9,
   "boundaries-integration": 6,
+  "headless-client-integration": 4,
 };
 export function assertProvenance(report, source, version) {
   assert.equal(report?.sourceSha, source, "Stale source evidence");

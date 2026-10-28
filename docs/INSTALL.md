@@ -65,6 +65,7 @@ pnpm demo:verify:phase4
 pnpm demo:verify:phase5
 pnpm demo:verify:phase6
 pnpm demo:verify:boundaries --isolated-demo
+pnpm demo:verify:headless
 pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm source:verify

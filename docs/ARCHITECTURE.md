@@ -32,4 +32,6 @@ Mỗi case giữ tham chiếu revision gói và định nghĩa workflow đã dù
 
 Tệp được lưu cùng checksum và trạng thái quét. Chỉ tệp sạch, đúng quyền và đúng lần xử lý mới được dùng khi chính sách task yêu cầu. Xem [gói phiên bản](PHASE-4.md), [bằng chứng và đối soát](PHASE-3.md), [G03](PHASE-6.md) và [OpenAPI](openapi.yaml) cho các ràng buộc chi tiết.
 
+[Client HTTP một file](../examples/headless-client/README.md) minh họa caller ngoài UI/node_modules dùng Identity và foundation qua gateway. Bộ kiểm chép client ra thư mục riêng để kiểm cùng hợp đồng, role và workflow thật. Foundation còn là adapter probe trong backend SchoolOps; việc này không chứng minh backend đã tách hoàn toàn nghiệp vụ hoặc hỗ trợ ứng dụng/BPMN tùy ý. README ví dụ liệt kê phần dùng lại và phần phải thay khi làm nghiệp vụ khác.
+
 Nếu trình xem Markdown không render Mermaid, các thành phần và quan hệ được mô tả trong đoạn văn trên; mã sơ đồ có thể chỉnh cùng source trong Git.

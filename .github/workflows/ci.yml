@@ -43,6 +43,7 @@ jobs:
       - run: pnpm demo:verify:phase5
       - run: pnpm demo:verify:phase6
       - run: pnpm demo:verify:boundaries --isolated-demo
+      - run: pnpm demo:verify:headless
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - run: pnpm demo:verify:phase7

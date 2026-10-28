@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — client HTTP độc lập
+
+- Thêm ví dụ client Node một file ngoài UI, nhận token qua environment, gọi Identity và foundation qua gateway; không phụ thuộc module ứng dụng, không tự replay POST hoặc chuyển tiếp token qua redirect.
+- Thêm bộ kiểm từ bản sao ngoài Git/node_modules: tạo/replay cùng nhiệm vụ, xung đột nội dung, sai vai trò, giới hạn admin và technician hoàn tất workflow thật. Báo cáo dùng cùng source/runtime và tham gia gate phát hành; ghi rõ foundation vẫn là adapter probe của SchoolOps.
+
 ## Chưa phát hành — polling đối soát
 
 - Chờ đọc detail/danh sách hoàn tất rồi mới hẹn lượt đối soát tiếp theo, tránh request chồng khi mạng chậm; dừng khi rời hồ sơ, ready hoặc lỗi quyền/phiên, chờ đủ quota khi 429.
