@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — quota bộ kiểm client
+
+- Bộ kiểm client một file đọc readiness/quota và chờ reset khi ngân sách thấp trước khi bắt đầu, tránh chạm giới hạn IP dùng chung với các suite trước. Không tăng quota hoặc thêm retry mutation vào client.
+- Khi child client thất bại ngoài dự kiến, báo HTTP/code đã lọc, không in token hoặc nội dung trả về để chẩn đoán lỗi CI.
+
 ## Chưa phát hành — bảo vệ secret khi cài lại
 
 - Init mới vẫn sinh secret riêng; khi đã có realm/S3 config, thiếu/rỗng secret hoặc mất `.env` thì dừng trước khi ghi tệp, tránh tự tạo mật khẩu mới không khớp volume cũ.

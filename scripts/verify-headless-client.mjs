@@ -10,7 +10,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { client, recorder } from "./test-client.mjs";
 import { local } from "./local-config.mjs";
 import { removeOwnedDirectory } from "./ops-lib.mjs";
+import { waitForGatewayBudget } from "./gateway-budget.mjs";
 
+const budget = await waitForGatewayBudget(local.webOrigin);
+if (budget.waitedMs) console.log(`Gateway quota low; waited ${budget.waitedMs}ms before starting the client probe.`);
 const c = await client();
 const { check } = await recorder("headless-client-integration");
 const dir = await mkdtemp(join(tmpdir(), "schoolops headless integration-"));
@@ -32,10 +35,13 @@ async function invoke(user, args, expectedExit = 0) {
     if (typeof error.code !== "number" || !error.stdout) throw new Error("Could not execute the copied headless client");
     result = { stdout: error.stdout, stderr: error.stderr, exitCode: error.code };
   }
-  assert.equal(result.exitCode, expectedExit, "Unexpected client exit status");
   assert.equal(result.stderr, "", "Client must not print stack traces or credentials");
   assert.equal(result.stdout.includes(token), false, "Client must not print its access token");
-  return JSON.parse(result.stdout);
+  const output = JSON.parse(result.stdout);
+  const status = Number.isInteger(output.status) ? output.status : "unavailable";
+  const code = typeof output.code === "string" && /^[A-Z0-9_]{1,80}$/.test(output.code) ? output.code : "unavailable";
+  assert.equal(result.exitCode, expectedExit, `Unexpected client exit status (HTTP ${status}, code ${code})`);
+  return output;
 }
 try {
   await check("a single copied client outside Git and node_modules reads real Identity through the gateway", async () => {
