@@ -4,17 +4,21 @@ Môi trường đã kiểm chứng hướng tới Docker Engine chạy Linux con
 
 Từ một thư mục mới:
 
-Các lệnh dưới lấy nhánh `feat/cai-tien-uiux` để đội thử giao diện mới. Nhánh chứa toàn bộ ứng dụng; `main` hiện chỉ có README và còn chờ chuỗi PR review/merge. Nếu cần tái lập bản đã đóng gói, thay tên nhánh trong lệnh clone bằng `v0.1.0-rc.2`; tag này giữ giao diện trước đợt chỉnh UI/UX.
+Các lệnh dưới lấy nhánh `fix/giu-nhap-khi-doc-loi` và ghim source `4be87bb7eb77df5da57c5966eca20a45bc07f650` đã có [full CI đạt](https://github.com/SIU-Sirocco-2026/sirocco-schoolops/actions/runs/40633098387), gồm 77 nhóm tích hợp, 25 browser và restore/audit/đóng gói. Cùng source có 25 browser Windows đạt; chưa có nghiệm thu người dùng thật. Nhánh chứa toàn bộ ứng dụng; `main` còn chờ review/merge. Muốn tái lập RC2 cũ, clone với `--branch v0.1.0-rc.2` và bỏ bước switch sang SHA mới; tag giữ giao diện trước đợt chỉnh UI/UX.
 
 ```powershell
-git clone --branch feat/cai-tien-uiux --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
+git clone --branch fix/giu-nhap-khi-doc-loi --single-branch https://github.com/SIU-Sirocco-2026/sirocco-schoolops.git
 cd sirocco-schoolops
+git switch --detach 4be87bb7eb77df5da57c5966eca20a45bc07f650
+git rev-parse HEAD
 pnpm install --frozen-lockfile
 pnpm demo:init
 pnpm demo:up
 pnpm demo:users
 pnpm demo:verify
 ```
+
+Kiểm HEAD trùng đủ SHA trước khi chạy. Detached HEAD giữ bản thử cố định; chỉ đổi sang SHA mới khi đội cung cấp mốc đã kiểm, không dùng `git pull` để tự nâng. Nếu máy đã có bản cài khác, làm phần cách ly bên dưới trước init/startup. Metadata version các nhánh hiện còn 0.1.0-rc.2; kiểm sourceRevision để phân biệt với tag/asset RC2 cũ.
 
 Nếu dùng source archive, kiểm tra `SHA256SUMS` của release và giải nén vào thư mục mới nằm ngoài mọi Git checkout. Chạy `pnpm install --frozen-lockfile`, `pnpm demo:init`, `pnpm demo:up` và `pnpm demo:users`. Với archive không có Git metadata, kiểm tra `GET /api/health/ready` trả `ready` và `GET /api/config` có `sourceRevision` khớp tệp `SOURCE-REVISION`, version khớp release; sau đó thử UI theo user guide.
 
@@ -74,6 +78,7 @@ pnpm source:verify
 pnpm security:audit
 pnpm legal:audit
 pnpm demo:verify:phase7
+pnpm release:prepare
 ```
 
 Giai đoạn 3 chủ động gây lỗi dịch vụ; giai đoạn 7 tạm dừng nguồn để nhường cổng cho stack restore độc lập rồi khởi động lại nguồn trong `finally`. Không thao tác demo đồng thời. Bài restore giữ project/volume diễn tập và dữ liệu nguồn; xem [backup/restore](BACKUP-RESTORE.md). Ubuntu CI cài Chromium với `--with-deps`.

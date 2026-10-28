@@ -1,5 +1,9 @@
 # Changelog
 
+## Chưa phát hành — hướng dẫn bản thử
+
+- README/INSTALL ghim source đã có CI và browser đạt, nêu riêng giới hạn nghiệm thu, cách đổi SHA và cách tái lập RC2 cũ. Bổ sung hai suite boundaries/headless còn thiếu trong chuỗi lệnh README để gate phát hành có đủ bằng chứng.
+
 ## Chưa phát hành — giữ bản nhập khi đọc lỗi
 
 - Lỗi đọc mạng/5xx giữ detail, nội dung Actions và tệp đã chọn; báo đang giữ snapshot cũ, cho tiếp tục soạn và khóa gửi đến khi xác nhận lại trạng thái. Không tự replay mutation.
