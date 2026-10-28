@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — bảo vệ secret khi cài lại
+
+- Init mới vẫn sinh secret riêng; khi đã có realm/S3 config, thiếu/rỗng secret hoặc mất `.env` thì dừng trước khi ghi tệp, tránh tự tạo mật khẩu mới không khớp volume cũ.
+- Startup kiểm đủ secret/file JSON và đối chiếu credential demo/S3 với config trước Docker/build; báo tên biến hoặc file lỗi, không in giá trị. Không tự xoay mật khẩu database/Identity hoặc xóa dữ liệu.
+
 ## Chưa phát hành — phạm vi bộ lọc
 
 - Giải thích thẻ tổng theo quyền truy cập, độc lập với bộ lọc danh sách; hiển thị nhóm/trạng thái/việc của tôi/tìm kiếm đã áp dụng và số hồ sơ/trang tương ứng.

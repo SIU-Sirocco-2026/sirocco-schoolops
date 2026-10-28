@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // See LICENSE and NOTICE in the repository root.
-import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseLocalEnv, localUrls } from "./local-config.mjs";
+import { prepareLocalSecrets } from "./local-secrets.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 let existing = "";
@@ -12,23 +12,12 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
-const env = parseLocalEnv(existing);
+let env = parseLocalEnv(existing);
 // Persist these inputs so Compose and commands run in a later shell agree.
 for (const name of ["SIROCCO_WEB_PORT", "SIROCCO_AUTH_PORT", "COMPOSE_PROJECT_NAME"])
   if (process.env[name] !== undefined) env[name] = process.env[name];
 const urls = localUrls(env);
-for (const key of [
-  "POSTGRES_ADMIN_PASSWORD",
-  "APP_DB_PASSWORD",
-  "KEYCLOAK_DB_PASSWORD",
-  "FLOWABLE_DB_PASSWORD",
-  "KEYCLOAK_ADMIN_PASSWORD",
-  "FLOWABLE_ADMIN_PASSWORD",
-  "DEMO_PASSWORD",
-  "S3_ACCESS_KEY",
-  "S3_SECRET_KEY",
-])
-  env[key] ||= randomBytes(24).toString("hex");
+env = prepareLocalSecrets(env, root);
 await writeFile(
   resolve(root, ".env"),
   "# Local development secrets — do not commit\n" +

@@ -3,6 +3,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { local } from "./local-config.mjs";
+import { assertLocalStartup } from "./local-secrets.mjs";
 import {
   root,
   compose,
@@ -10,6 +11,7 @@ import {
   sourceRevision,
   run,
 } from "./ops-lib.mjs";
+await assertLocalStartup(root);
 ensureDocker();
 let source;
 try {

@@ -33,6 +33,8 @@ Windows/WSL2 và Ubuntu amd64 là các môi trường đã kiểm chứng. macOS
 
 Mở [SchoolOps](http://localhost:8088). Identity ở `http://localhost:8180`. Hai cổng chỉ bind loopback. `.env` và `infra/generated/` chứa secret local, được sinh mới và bị ignore; đọc `DEMO_PASSWORD` tại máy để đăng nhập, không gửi giá trị lên Issue/chat. `demo:init` giữ secret đã có; `demo:users` thêm/bind các tài khoản demo cần thiết, không đặt lại mật khẩu realm đang dùng. Không trộn `.env` mới với volume cũ.
 
+Nếu đã có realm/S3 config nhưng `.env` mất hoặc thiếu/rỗng một secret, `demo:init` dừng trước khi ghi tệp và nêu tên biến cần khôi phục. Lấy lại `.env` gốc từ bản sao an toàn của đúng bản cài; không điền mật khẩu mới hoặc xóa volume. `demo:up` kiểm đủ secret, file JSON sinh ra và sự khớp DEMO_PASSWORD/S3 trước khi gọi Docker/build. Nếu thiếu file sinh ra mà `.env` gốc còn đầy đủ, kiểm lại nguồn `.env` rồi chạy `demo:init`. Kiểm này không xác thực mật khẩu database/Identity đã lưu trong volume, không tự xoay mật khẩu và không nhận biết dữ liệu cũ nếu cả `.env` lẫn config sinh ra đều đã bị xóa. Khi đó giữ volume và tìm bản sao cấu hình trước khi tiếp tục.
+
 API tự chạy migration 1–8 có khóa khi khởi động, seed danh mục/vai trò và gói mặc định nếu chưa có; không ghi đè active revision sau restart. Chạy lại `demo:up` không xóa dữ liệu. `demo:down` dừng/xóa container/network và giữ volume. Không dùng `down -v` trên dữ liệu cần giữ. Sau nâng cấp source, backup bản hiện tại, đọc migration/giới hạn, rồi chạy `demo:up`; bản RC này chưa có migration hạ cấp.
 
 ## Hai bản clone trên cùng máy
