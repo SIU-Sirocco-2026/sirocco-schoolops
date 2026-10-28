@@ -5,6 +5,7 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public retryAfterMs = 0,
+    public origin: "response" | "session" = "response",
   ) {
     super(message);
     this.name = "ApiError";
@@ -34,6 +35,8 @@ export function authenticatedRequest(
       throw new ApiError(
         "Chưa xác minh được phiên đăng nhập. Hãy kiểm tra kết nối hoặc đăng xuất rồi đăng nhập lại.",
         401,
+        0,
+        "session",
       );
     }
     const headers = new Headers(init.headers);
@@ -50,6 +53,10 @@ export function authenticatedRequest(
     }
     return decodeResponse<T>(response);
   };
+}
+
+export function isVerifiedAccessDenial(error: unknown) {
+  return error instanceof ApiError && error.origin === "response" && [401, 403, 404].includes(error.status);
 }
 
 export async function decodeResponse<T>(response: Response): Promise<T> {

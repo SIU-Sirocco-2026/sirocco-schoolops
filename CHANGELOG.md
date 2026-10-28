@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — giữ bản nhập khi đọc lỗi
+
+- Lỗi đọc mạng/5xx giữ detail, nội dung Actions và tệp đã chọn; báo đang giữ snapshot cũ, cho tiếp tục soạn và khóa gửi đến khi xác nhận lại trạng thái. Không tự replay mutation.
+- HTTP 401/403/404 xóa snapshot case/list/report và vô hiệu hóa phản hồi cũ tới muộn. Lỗi kiểm phiên ở client được phân biệt với phản hồi từ server, tránh coi một lần chưa kiểm được phiên là quyền đã bị từ chối.
+
 ## Chưa phát hành — quota bộ kiểm client
 
 - Bộ kiểm client một file đọc readiness/quota và chờ reset khi ngân sách thấp trước khi bắt đầu, tránh chạm giới hạn IP dùng chung với các suite trước. Không tăng quota hoặc thêm retry mutation vào client.

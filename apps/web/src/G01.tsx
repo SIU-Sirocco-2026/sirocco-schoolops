@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessLog } from "./Safety.js";
 import { Evidence } from "./Evidence.js";
-import { ApiError } from "./http.js";
+import { ApiError, isVerifiedAccessDenial } from "./http.js";
 import { confirmCaseRefresh, hasUnsavedCase, useUnsavedChanges } from "./unsaved.js";
 import {
   caseLabels,
@@ -162,6 +162,20 @@ export function G01({
     previousSelection = useRef(selected);
   const currentSelection = useRef(selected);
   currentSelection.current = selected;
+  function clearDeniedSnapshot(error: Error) {
+    // Invalidate older successful reads so a denial cannot be undone by a late response.
+    generation.current++;
+    detailGeneration.current++;
+    setDetail(null);
+    setSummary(null);
+    setItems([]);
+    setTotal(0);
+    setLoading(false);
+    setEvidenceReady(false);
+    setRevisionChanged(false);
+    setDetailError(error.message);
+    setListError(error.message);
+  }
   const listPanel = useRef<HTMLElement | null>(null),
     detailPanel = useRef<HTMLElement | null>(null),
     listHeading = useRef<HTMLHeadingElement | null>(null),
@@ -212,6 +226,7 @@ export function G01({
     } catch (e) {
       if (n === generation.current) {
         setListError((e as Error).message);
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
         throw e;
       }
     } finally {
@@ -225,6 +240,7 @@ export function G01({
     try {
       const data = await request<Detail>(`${basePath}/cases/${id}`);
       if (n === detailGeneration.current) {
+        setDetailError("");
         const previous = detailSnapshot.current;
         if (!discardAccepted && previous?.item.id === id && previous.item.revision !== data.item.revision && hasUnsavedCase(caseViews[prefix]!, id)) {
           setRevisionChanged(true);
@@ -236,7 +252,10 @@ export function G01({
         return data;
       }
     } catch (e) {
-      if (n === detailGeneration.current) setDetailError((e as Error).message);
+      if (n === detailGeneration.current) {
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
+        else setDetailError((e as Error).message);
+      }
       throw e;
     }
   }
@@ -319,7 +338,8 @@ export function G01({
     } catch (e) {
       if (currentSelection.current === selection) {
         setError((e as Error).message);
-        setDetail(null);
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
+        else setDetailError((e as Error).message);
       }
     } finally {
       setRefreshing(false);
@@ -356,7 +376,7 @@ export function G01({
     }
   }
   async function act(action: string, fields: Record<string, unknown> = {}) {
-    if (!detail) return;
+    if (!detail || detailError || revisionChanged) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -694,6 +714,7 @@ export function G01({
             </div>
           ) : (
             <div className="details case-detail">
+              {detailError && <p role="alert" className="message error case-read-error">Chưa đọc được trạng thái mới. Nội dung đang nhập vẫn được giữ và có thể tiếp tục soạn; hãy Làm mới hồ sơ để kiểm tra trước khi gửi. {detailError}</p>}
               {revisionChanged && <p role="alert" className="message error">Hồ sơ có phiên bản mới. Nội dung bạn đang nhập vẫn được giữ; hãy chọn Làm mới hồ sơ để xem thay đổi và xác nhận bỏ nội dung chưa lưu.</p>}
               <span
                 className={`status ${detail.item.status === "closed" ? "completed" : ""}`}
@@ -802,7 +823,7 @@ export function G01({
                 prefix={prefix}
                 policy={detail.item.evidencePolicy.submit}
                 onReady={setEvidenceReady}
-                disabled={busy || refreshing}
+                disabled={busy || refreshing || !!detailError || revisionChanged}
               />
               {detail.item.syncStatus !== "ready" ? (
                 <p className="message error">
@@ -817,6 +838,7 @@ export function G01({
                     item={detail.item}
                     catalog={catalog}
                     busy={busy || refreshing}
+                    blocked={!!detailError || revisionChanged}
                     act={act}
                     evidenceReady={evidenceReady}
                     prefix={prefix}
@@ -1021,11 +1043,13 @@ function Actions({
   item,
   catalog,
   busy,
+  blocked,
   act,
 }: {
   item: Case;
   catalog: Catalog;
   busy: boolean;
+  blocked: boolean;
   evidenceReady: boolean;
   prefix: string;
   act: (action: string, fields?: Record<string, unknown>) => Promise<void>;
@@ -1063,7 +1087,7 @@ function Actions({
       {has("confirm") && (
         <button
           className="button primary"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => void act("confirm")}
         >
           Xác nhận cần xử lý
@@ -1087,7 +1111,7 @@ function Actions({
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
-          <button className="button secondary" disabled={busy}>
+          <button className="button secondary" disabled={busy || blocked}>
             Đóng sau xác minh
           </button>
         </form>
@@ -1095,7 +1119,7 @@ function Actions({
       {has("accept") && (
         <button
           className="button primary"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => void act("accept")}
         >
           {prefix === "g03" ? "Tiếp nhận phản ánh" : "Tiếp nhận sự cố"}
@@ -1122,7 +1146,7 @@ function Actions({
               disabled={busy}
             />
           </label>
-          <button className="button secondary" disabled={busy}>
+          <button className="button secondary" disabled={busy || blocked}>
             {has("return_info") ? "Trả bổ sung" : "Trả lại xử lý"}
           </button>
         </form>
@@ -1142,7 +1166,7 @@ function Actions({
             prefix="supplement"
             disabled={busy}
           />
-          <button className="button primary" disabled={busy}>
+          <button className="button primary" disabled={busy || blocked}>
             Bổ sung và gửi lại
           </button>
         </form>
@@ -1217,7 +1241,7 @@ function Actions({
               />
             </label>
           </fieldset>
-          <button className="button primary" disabled={busy}>
+          <button className="button primary" disabled={busy || blocked}>
             Giao xử lý
           </button>
         </form>
@@ -1225,7 +1249,7 @@ function Actions({
       {has("receive") && (
         <button
           className="button primary"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => void act("receive")}
         >
           Nhận xử lý
@@ -1286,7 +1310,7 @@ function Actions({
               className="button secondary"
               type="submit"
               value="save_work"
-              disabled={busy}
+              disabled={busy || blocked}
             >
               Lưu kết quả
             </button>
@@ -1294,7 +1318,7 @@ function Actions({
               className="button primary"
               type="submit"
               value={has("resolve") ? "resolve" : "submit"}
-              disabled={busy || !evidenceReady}
+              disabled={busy || blocked || !evidenceReady}
             >
               {has("resolve") ? "Hoàn tất ứng phó và đóng" : "Gửi nghiệm thu"}
             </button>
@@ -1310,7 +1334,7 @@ function Actions({
       {has("approve") && (
         <button
           className="button primary"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => void act("approve")}
         >
           Phê duyệt và đóng hồ sơ

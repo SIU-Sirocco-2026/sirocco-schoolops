@@ -2,7 +2,7 @@
 // See LICENSE and NOTICE in the repository root.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ApiError, authenticatedRequest, decodeResponse } from "../src/http.js";
+import { ApiError, authenticatedRequest, decodeResponse, isVerifiedAccessDenial } from "../src/http.js";
 
 test("refresh failure gives sign-in guidance and never dispatches a mutation", async () => {
   let calls = 0;
@@ -23,6 +23,7 @@ test("refresh failure gives sign-in guidance and never dispatches a mutation", a
     (error: ApiError) =>
       error instanceof ApiError &&
       error.status === 401 &&
+      !isVerifiedAccessDenial(error) &&
       /đăng nhập lại/.test(error.message),
   );
   assert.equal(calls, 0);
@@ -39,9 +40,18 @@ test("a resolved refresh without a token cannot send Bearer undefined", async ()
   );
   await assert.rejects(
     request("/api/g01/cases"),
-    (error: ApiError) => error instanceof ApiError && error.status === 401,
+    (error: ApiError) => error instanceof ApiError && error.status === 401 && error.origin === "session",
   );
   assert.equal(calls, 0);
+});
+
+test("only access denials received from HTTP are classified as verified permission loss", async () => {
+  for (const status of [401, 403, 404]) await assert.rejects(
+    decodeResponse(Response.json({ error: { message: "Synthetic denial" } }, { status })),
+    error => isVerifiedAccessDenial(error),
+  );
+  for (const error of [new Error("Network failed"), new ApiError("server", 503), new ApiError("refresh failed", 401, 0, "session")])
+    assert.equal(isVerifiedAccessDenial(error), false);
 });
 
 test("one valid request preserves body, idempotency key and file content type without automatic replay", async () => {
