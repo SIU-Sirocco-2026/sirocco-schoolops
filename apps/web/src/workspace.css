@@ -588,7 +588,7 @@ pre {
   text-align: left;
   font-size: 13px;
 }
-.report-count:last-child {
+.report-count:last-of-type {
   border-right: 0;
 }
 .report-count strong {
@@ -604,6 +604,21 @@ pre {
 }
 .report-count:hover {
   background: #f3f6f1;
+}
+.report-scope {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.filter-summary {
+  margin: -4px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 fieldset {
   min-width: 0;
@@ -1298,6 +1313,7 @@ details summary {
   }
   .g01.has-selection > .report-summary,
   .g01.has-selection > .filters,
+  .g01.has-selection > .filter-summary,
   .g01.has-selection > .g01-toolbar {
     display: none;
   }

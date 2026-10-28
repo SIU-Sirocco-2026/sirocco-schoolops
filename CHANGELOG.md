@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — phạm vi bộ lọc
+
+- Giải thích thẻ tổng theo quyền truy cập, độc lập với bộ lọc danh sách; hiển thị nhóm/trạng thái/việc của tôi/tìm kiếm đã áp dụng và số hồ sơ/trang tương ứng.
+- Thêm Bỏ bộ lọc về tất cả hồ sơ được cấp quyền và trang đầu, giữ nội dung form tạo đang nhập. Giữ nguyên API và kiểm quyền; thẻ tổng tiếp tục chọn nhóm và bỏ các bộ lọc khác.
+
 ## Chưa phát hành — nội dung chưa lưu
 
 - Cảnh báo khi form tạo, thao tác case hoặc tệp mới chọn có thể bị bỏ bởi chuyển view/case, Back/Forward trong history app hoặc reload. Từ chối giữ nội dung và focus; form sạch hoặc route không làm mất form không hỏi thừa. Không lưu bản nháp G03 vào browser storage.

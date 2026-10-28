@@ -411,10 +411,21 @@ export function G01({
                   : detail.item.actions.length
                     ? "Kiểm tra nội dung và chọn cách xử lý phù hợp."
                     : `Đang chờ ${detail.item.status === "acceptance" ? name(detail.item.approverId) : ["assigned", "in_progress"].includes(detail.item.status) ? (detail.item.technicianId ? name(detail.item.technicianId) : catalog?.teams.find((t) => t.id === detail.item.teamId)?.name || "người được giao") : name(detail.item.coordinatorId)} thực hiện bước tiếp theo.`);
+  const hasFilters = !!(q || search || status || mine || bucket !== "all" || page !== 1);
+  const bucketLabels: Record<string, string> = { all: "Tất cả", open: "Đang mở", overdue: "Quá hạn", completed: "Hoàn thành" };
+  const appliedFilters = [bucketLabels[bucket], status && statusNames[status], mine && "Công việc của tôi", search && `Tìm “${search}”`].filter(Boolean).join(" · ");
+  function clearFilters() {
+    setBucket("all");
+    setStatus("");
+    setMine(false);
+    setSearch("");
+    setQ("");
+    setPage(1);
+  }
   return (
     <div className={`g01 ${selected ? "has-selection" : ""}`}>
       {summary && (
-        <section className="report-summary" aria-label="Báo cáo hồ sơ">
+        <section className="report-summary" aria-label="Báo cáo hồ sơ" aria-describedby={`report-scope-${prefix}`}>
           {(
             [
               ["all", "Tất cả", summary.total],
@@ -441,6 +452,9 @@ export function G01({
               <strong>{count}</strong>
             </button>
           ))}
+          <p className="report-scope" id={`report-scope-${prefix}`}>
+            Tổng hồ sơ bạn được phép xem, không phụ thuộc bộ lọc bên dưới. Chọn một thẻ để xem nhóm đó và bỏ các bộ lọc khác.
+          </p>
         </section>
       )}
       <div className="g01-toolbar">
@@ -561,7 +575,15 @@ export function G01({
         >
           Làm mới hồ sơ
         </button>
+        <button className="button secondary" type="button" disabled={!hasFilters} onClick={clearFilters}>
+          Bỏ bộ lọc
+        </button>
       </form>
+      {!loading && !listError && (
+        <p className="filter-summary" aria-live="polite" aria-atomic="true" aria-label="Bộ lọc đang áp dụng">
+          Đang xem: {appliedFilters}. {total} hồ sơ phù hợp · Trang {page} / {Math.max(1, Math.ceil(total / 25))}.
+        </p>
+      )}
       <div className="work-grid g01-grid">
         <section className="panel" ref={listPanel}>
           <div className="section-heading">
