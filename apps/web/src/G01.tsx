@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessLog } from "./Safety.js";
 import { Evidence } from "./Evidence.js";
 import { ApiError } from "./http.js";
+import { confirmCaseRefresh, hasUnsavedCase, useUnsavedChanges } from "./unsaved.js";
 import {
   caseLabels,
   caseViews,
@@ -136,6 +137,9 @@ export function G01({
     [items, setItems] = useState<Case[]>([]),
     [total, setTotal] = useState(0);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const detailSnapshot = useRef(detail);
+  detailSnapshot.current = detail;
+  const [revisionChanged, setRevisionChanged] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [listError, setListError] = useState("");
   const [pollError, setPollError] = useState("");
@@ -147,6 +151,7 @@ export function G01({
   const [showCreate, setShowCreate] = useState(false),
     [form, setForm] = useState(initial),
     [key, setKey] = useState(() => crypto.randomUUID());
+  const creationSaved = useUnsavedChanges(JSON.stringify(form) !== JSON.stringify(initial), { view: caseViews[prefix]! });
   const [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -212,13 +217,19 @@ export function G01({
       if (n === generation.current) setLoading(false);
     }
   }
-  async function loadDetail(id: string) {
+  async function loadDetail(id: string, discardAccepted = false) {
     // A refresh/action may still be awaiting the list after the user opens another case.
     if (currentSelection.current !== id) return;
     const n = ++detailGeneration.current;
     try {
       const data = await request<Detail>(`${basePath}/cases/${id}`);
       if (n === detailGeneration.current) {
+        const previous = detailSnapshot.current;
+        if (!discardAccepted && previous?.item.id === id && previous.item.revision !== data.item.revision && hasUnsavedCase(caseViews[prefix]!, id)) {
+          setRevisionChanged(true);
+          return;
+        }
+        setRevisionChanged(false);
         setDetail(data);
         setDetailError("");
         return data;
@@ -241,6 +252,7 @@ export function G01({
   }, [status, search, mine, page, bucket]);
   useEffect(() => {
     setDetail(null);
+    setRevisionChanged(false);
     setDetailError("");
     setPollError("");
     setEvidenceReady(false);
@@ -294,14 +306,14 @@ export function G01({
       document.removeEventListener("visibilitychange", visibilityChanged);
     };
   }, [selected, detail?.item.syncStatus]);
-  async function refresh() {
+  async function refresh(discardAccepted = false) {
     const selection = selected;
     setError("");
     setPollError("");
     setNotice("");
     try {
       await loadList();
-      if (selection) await loadDetail(selection);
+      if (selection) await loadDetail(selection, discardAccepted);
     } catch (e) {
       if (currentSelection.current === selection) {
         setError((e as Error).message);
@@ -323,6 +335,7 @@ export function G01({
           body: JSON.stringify({ ...form, assetId: form.assetId || null }),
         },
       );
+      creationSaved();
       chooseCase(data.item.id);
       setKey(crypto.randomUUID());
       setForm(initial);
@@ -359,7 +372,7 @@ export function G01({
         data.message ||
           `${actionNames[action]}. Hồ sơ ${data.item.code}: ${statusNames[data.item.status]}.`,
       );
-      await loadDetail(data.item.id);
+      await loadDetail(data.item.id, true);
       await loadList();
     } catch (e) {
       setError((e as Error).message);
@@ -540,7 +553,7 @@ export function G01({
           type="button"
           data-list-refresh
           disabled={busy || loading}
-          onClick={() => void refresh()}
+          onClick={() => { if (confirmCaseRefresh(caseViews[prefix]!, selected)) void refresh(true); }}
         >
           Làm mới hồ sơ
         </button>
@@ -635,7 +648,7 @@ export function G01({
           <div className="section-heading">
             <h2>Chi tiết hồ sơ</h2>
             {selected && (<div className="detail-tools">
-              <button type="button" className="text-button" disabled={busy || loading} onClick={() => void refresh()}>Làm mới hồ sơ</button>
+              <button type="button" className="text-button" disabled={busy || loading} onClick={() => { if (confirmCaseRefresh(caseViews[prefix]!, selected)) void refresh(true); }}>Làm mới hồ sơ</button>
               <button
                 type="button"
                 className="button secondary case-list-return"
@@ -655,6 +668,7 @@ export function G01({
             </div>
           ) : (
             <div className="details case-detail">
+              {revisionChanged && <p role="alert" className="message error">Hồ sơ có phiên bản mới. Nội dung bạn đang nhập vẫn được giữ; hãy chọn Làm mới hồ sơ để xem thay đổi và xác nhận bỏ nội dung chưa lưu.</p>}
               <span
                 className={`status ${detail.item.status === "closed" ? "completed" : ""}`}
               >
@@ -1002,6 +1016,10 @@ function Actions({
     assetId: item.assetId || "",
     description: item.description,
   });
+  useUnsavedChanges(!!reason || !!assignment || !!approver || !!due ||
+    measures !== (item.measures || "") || result !== (item.result || "") ||
+    form.title !== item.title || form.roomId !== item.roomId || form.assetId !== (item.assetId || "") || form.description !== item.description,
+    { view: caseViews[prefix]!, caseId: item.id });
   const has = (a: string) => item.actions.includes(a);
   if (!item.actions.length)
     return item.status === "closed" ? null : (

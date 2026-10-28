@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./http.js";
 import { filePolicy } from "./file-policy.js";
+import { useUnsavedChanges } from "./unsaved.js";
+import { caseViews } from "./workspace-state.js";
 
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 type FileEvidence = {
@@ -58,6 +60,7 @@ export function Evidence({
     return () => { mounted.current = false; };
   }, []);
   const [refreshIndex, setRefreshIndex] = useState(0);
+  const uploadSaved = useUnsavedChanges(!!file, { view: caseViews[prefix]!, caseId });
   const mimeTypesKey = JSON.stringify(policy.mimeTypes);
   const allowed = filePolicy(policy.mimeTypes);
   const validationError = file ? allowed.validate(file) : null;
@@ -135,6 +138,7 @@ export function Evidence({
         body: bytes,
       });
       if (!mounted.current) return;
+      uploadSaved();
       key.current = crypto.randomUUID();
       setNotice(`Đã nhận tệp ${file.name}. Hệ thống sẽ tự cập nhật kết quả kiểm tra; bạn không cần tải lại.`);
       setFile(null);

@@ -83,6 +83,7 @@ test("a confirmed upload survives a failed evidence refresh and a read retry nev
   });
   next = await c.act(next, "approver", "return_work", { reason: "Cần bổ sung bằng chứng cho lần xử lý mới." });
   expect(next.taskId).not.toBe(row.taskId);
+  page.once("dialog", async dialog => { expect(dialog.type()).toBe("confirm"); await dialog.accept(); });
   await page.getByRole("button", { name: "Làm mới hồ sơ", exact: true }).click();
   await expect(section.getByRole("button", { name: "Chọn tệp", exact: true })).toBeVisible();
   await expect(section.locator(".file-name")).toHaveText("Chưa chọn tệp");
@@ -166,6 +167,7 @@ test("a delayed upload cannot become evidence for a later repair task", async ({
     expect((await relabeled.json()).error.code).toBe("IDEMPOTENCY_CONFLICT");
     expect(objects()).toEqual(beforeObjects);
     await expect(section.getByRole("alert")).toContainText("Vòng xử lý đã thay đổi");
+    page.once("dialog", async dialog => { expect(dialog.type()).toBe("confirm"); await dialog.accept(); });
     await page.getByRole("button", { name: "Làm mới hồ sơ", exact: true }).click();
     await expect(section.locator(".file-name")).toHaveText("Chưa chọn tệp");
     await expect(page.getByRole("button", { name: "Gửi nghiệm thu", exact: true })).toBeDisabled();

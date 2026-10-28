@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // See LICENSE and NOTICE in the repository root.
 import { useSyncExternalStore } from "react";
+import { initializeWorkspaceHistory, navigateWithGuard } from "./unsaved.js";
 
 export type View = "g01" | "foundation" | "packs" | "environment" | "safety";
 const views: View[] = ["g01", "foundation", "packs", "environment", "safety"];
@@ -42,12 +43,14 @@ export function navigate(
   url.searchParams.set("view", view);
   if (caseId) url.searchParams.set("case", caseId);
   else url.searchParams.delete("case");
-  if (url.href === window.location.href) return;
-  window.history[replace ? "replaceState" : "pushState"]({}, "", url);
+  if (url.href === window.location.href) return true;
+  if (!navigateWithGuard(url, replace)) return false;
   window.dispatchEvent(new Event(changeEvent));
+  return true;
 }
 
 function subscribe(callback: () => void) {
+  initializeWorkspaceHistory();
   window.addEventListener("popstate", callback);
   window.addEventListener(changeEvent, callback);
   return () => {

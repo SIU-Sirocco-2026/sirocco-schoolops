@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — nội dung chưa lưu
+
+- Cảnh báo khi form tạo, thao tác case hoặc tệp mới chọn có thể bị bỏ bởi chuyển view/case, Back/Forward trong history app hoặc reload. Từ chối giữ nội dung và focus; form sạch hoặc route không làm mất form không hỏi thừa. Không lưu bản nháp G03 vào browser storage.
+- POST tạo/upload được server nhận được đánh dấu sạch đúng thời điểm. Khi đọc thấy revision mới trong lúc còn sửa, giữ nội dung và báo cần chủ động làm mới; không âm thầm ghi đè dữ liệu người khác. Manual refresh hỏi trước khi có thể remount form.
+
 ## Chưa phát hành — client HTTP độc lập
 
 - Thêm ví dụ client Node một file ngoài UI, nhận token qua environment, gọi Identity và foundation qua gateway; không phụ thuộc module ứng dụng, không tự replay POST hoặc chuyển tiếp token qua redirect.
