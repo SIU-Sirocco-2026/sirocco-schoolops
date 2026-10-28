@@ -1,5 +1,10 @@
 # Changelog
 
+## Chưa phát hành — polling đối soát
+
+- Chờ đọc detail/danh sách hoàn tất rồi mới hẹn lượt đối soát tiếp theo, tránh request chồng khi mạng chậm; dừng khi rời hồ sơ, ready hoặc lỗi quyền/phiên, chờ đủ quota khi 429.
+- Tạm ngưng polling lúc tab ẩn, tiếp tục khi hiện; callback cũ không đặt lỗi hoặc làm mới danh sách sau khi rời case. Lỗi polling có trạng thái riêng, bỏ khi đọc lại thành công và dùng bộ lọc hiện tại khi cập nhật danh sách.
+
 ## Chưa phát hành — upload đúng vòng xử lý
 
 - Upload G01/G02/G03 bắt buộc `X-Task-Id` từ hồ sơ đang thao tác. Server kiểm task dưới khóa hồ sơ trước khi ghi object/file/event; POST tới muộn của vòng cũ nhận 409 thay vì trở thành bằng chứng vòng mới.

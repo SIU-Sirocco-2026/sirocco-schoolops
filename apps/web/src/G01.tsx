@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessLog } from "./Safety.js";
 import { Evidence } from "./Evidence.js";
+import { ApiError } from "./http.js";
 import {
   caseLabels,
   caseViews,
@@ -137,6 +138,7 @@ export function G01({
   const [detail, setDetail] = useState<Detail | null>(null);
   const [detailError, setDetailError] = useState("");
   const [listError, setListError] = useState("");
+  const [pollError, setPollError] = useState("");
   const [status, setStatus] = useState(""),
     [q, setQ] = useState(""),
     [search, setSearch] = useState(""),
@@ -219,12 +221,15 @@ export function G01({
       if (n === detailGeneration.current) {
         setDetail(data);
         setDetailError("");
+        return data;
       }
     } catch (e) {
       if (n === detailGeneration.current) setDetailError((e as Error).message);
       throw e;
     }
   }
+  const latestListLoader = useRef(loadList);
+  latestListLoader.current = loadList;
   useEffect(() => {
     void request<Catalog>(`${basePath}/catalog`)
       .then(setCatalog)
@@ -237,6 +242,7 @@ export function G01({
   useEffect(() => {
     setDetail(null);
     setDetailError("");
+    setPollError("");
     setEvidenceReady(false);
     scrollRequested.current = !!selected;
     if (selected) void loadDetail(selected).catch(() => {});
@@ -251,16 +257,47 @@ export function G01({
   }, [detail?.item.taskId]);
   useEffect(() => {
     if (!selected || !detail || detail.item.syncStatus === "ready") return;
-    const timer = setInterval(() => {
-      void loadDetail(selected)
-        .then(() => loadList())
-        .catch((e) => setError(e.message));
-    }, 3000);
-    return () => clearInterval(timer);
+    let active = true, inFlight = false, stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function poll() {
+      if (!active || stopped || inFlight || document.hidden) return;
+      inFlight = true;
+      let delay = 3000;
+      try {
+        const data = await loadDetail(selected!);
+        if (!active || currentSelection.current !== selected || document.hidden) return;
+        setPollError("");
+        if (data?.item.syncStatus === "ready") stopped = true;
+        await latestListLoader.current();
+      } catch (e) {
+        if (active && currentSelection.current === selected) {
+          setPollError((e as Error).message);
+          if (e instanceof ApiError) {
+            if ([401, 403, 404].includes(e.status)) stopped = true;
+            if (e.status === 429) delay = Math.max(delay, e.retryAfterMs);
+          }
+        }
+      } finally {
+        inFlight = false;
+        if (active && !stopped && !document.hidden) timer = setTimeout(() => void poll(), delay);
+      }
+    }
+    function visibilityChanged() {
+      clearTimeout(timer);
+      if (!document.hidden) void poll();
+    }
+    timer = setTimeout(() => void poll(), 3000);
+    document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+    };
   }, [selected, detail?.item.syncStatus]);
   async function refresh() {
     const selection = selected;
     setError("");
+    setPollError("");
     setNotice("");
     try {
       await loadList();
@@ -410,9 +447,9 @@ export function G01({
           </button>
         )}
       </div>
-      {(error || listError) && (
+      {(error || listError || pollError) && (
         <div role="alert" className="message error">
-          {error || listError}
+          {error || listError || pollError}
         </div>
       )}
       {notice && (
