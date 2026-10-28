@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "platformTested": "linux/amd64",
+  "images": {
+    "postgres:17.11-alpine3.23": "postgres:17.11-alpine3.23@sha256:01ea903aa65deb58eb49d6e09d859ecff63a6bb7d61feca55f2abad71d08f72a",
+    "quay.io/keycloak/keycloak:26.8.1": "quay.io/keycloak/keycloak:26.8.1@sha256:a78d6b79572168cb25886b80a8b5b8d4ed4390743e3eecb810538683e209dd6b",
+    "flowable/flowable-rest:7.2.0": "flowable/flowable-rest:7.2.0@sha256:bcb895b12a95c7a11c07daef9a66c7c7e021038963b0877ee1f01d43059694ee",
+    "chrislusf/seaweedfs:4.48": "chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d",
+    "clamav/clamav:1.5.4": "clamav/clamav:1.5.4@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e",
+    "apache/apisix:3.19.0-ubuntu": "apache/apisix:3.19.0-ubuntu@sha256:bb4958b943949b3543353481eff1333e10b3323c6095dd0af4406de2b8cf738e",
+    "node:22.16.0-alpine": "node:22.16.0-alpine@sha256:41e4389f3d988d2ed55392df4db1420ad048ae53324a8e2b7c6d19508288107e",
+    "nginx:1.28.0-alpine": "nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284"
+  }
+}

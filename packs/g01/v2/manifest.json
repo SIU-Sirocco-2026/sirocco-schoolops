@@ -1,0 +1,56 @@
+{
+  "id": "g01",
+  "version": "2.0.0",
+  "name": "Cơ sở vật chất v2",
+  "adapter": "facility-v1",
+  "schema": "g01-case@2.0.0",
+  "workflow": "g01-facilities@2.0.0",
+  "evidence": "g01-evidence@2.0.0",
+  "roles": {
+    "reporter": "reporter",
+    "coordinator": "coordinator",
+    "technician": "technician",
+    "approver": "approver"
+  },
+  "tasks": {
+    "verify": {
+      "role": "coordinator",
+      "actions": [
+        "accept",
+        "return_info"
+      ]
+    },
+    "supplement": {
+      "role": "reporter",
+      "actions": [
+        "resubmit"
+      ]
+    },
+    "assign": {
+      "role": "coordinator",
+      "actions": [
+        "assign"
+      ]
+    },
+    "receive": {
+      "role": "technician",
+      "actions": [
+        "receive"
+      ]
+    },
+    "repair": {
+      "role": "technician",
+      "actions": [
+        "save_work",
+        "submit"
+      ]
+    },
+    "approve": {
+      "role": "approver",
+      "actions": [
+        "approve",
+        "return_work"
+      ]
+    }
+  }
+}

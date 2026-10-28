@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
+import { defineConfig, devices } from "@playwright/test";
+import { evidenceContext } from "./scripts/evidence.mjs";
+import { local } from "./scripts/local-config.mjs";
+export default defineConfig({
+  testDir: "./tests/e2e",
+  outputDir: "test-results/browser",
+  fullyParallel: false,
+  workers: 1,
+  retries: process.env.CI ? 1 : 0,
+  failOnFlakyTests: Boolean(process.env.CI),
+  metadata: evidenceContext(),
+  reporter: [
+    ["list"],
+    ["html", { open: "never" }],
+    ["json", { outputFile: "test-results/browser-results.json" }],
+  ],
+  use: {
+    baseURL: local.webOrigin,
+    trace: "retain-on-failure",
+    actionTimeout: 20000,
+  },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+});

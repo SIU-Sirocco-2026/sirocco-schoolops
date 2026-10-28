@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="https://sirocco.local/foundation">
+  <process id="foundation-task" name="Kiểm tra kết nối nền tảng" isExecutable="true">
+    <startEvent id="start"/>
+    <sequenceFlow id="to-task" sourceRef="start" targetRef="verify"/>
+    <userTask id="verify" name="Xác nhận nhiệm vụ tích hợp" flowable:assignee="${assignee}"/>
+    <sequenceFlow id="to-end" sourceRef="verify" targetRef="end"/>
+    <endEvent id="end"/>
+  </process>
+</definitions>

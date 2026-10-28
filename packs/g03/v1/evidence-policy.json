@@ -1,0 +1,8 @@
+{
+  "version": "g03-evidence@1.0.0",
+  "submit": {
+    "minClean": 1,
+    "step": "repair",
+    "currentTask": true
+  }
+}

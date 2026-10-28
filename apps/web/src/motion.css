@@ -1,0 +1,311 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * SchoolOps motion: short feedback, visible state, no delayed interaction. */
+.workspace-modern {
+  --motion-fast: 120ms;
+  --motion-state: 180ms;
+  --motion-reveal: 240ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.workspace-modern
+  :is(
+    .button,
+    .text-button,
+    .nav-item,
+    .task-row,
+    .workspace-views button,
+    .distribution-filter,
+    .report-count,
+    .mobile-workspace-toggle,
+    .overdue-chip,
+    summary
+  ) {
+  transition:
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-state) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+.workspace-modern :is(input:not([type="file"]), select, textarea) {
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+}
+.workspace-modern :is(.button, .mobile-workspace-toggle):not(:disabled):active {
+  transform: translateY(1px);
+}
+.workspace-modern .task-row .row-arrow,
+.workspace-modern .distribution-filter > svg,
+.workspace-modern .report-count > svg {
+  transition: transform var(--motion-state) var(--motion-ease);
+}
+.workspace-modern .nav-item > svg {
+  transition: transform var(--motion-state) var(--motion-ease);
+}
+.workspace-modern .nav-item.active > svg {
+  animation: schoolops-icon-select 240ms var(--motion-ease);
+}
+.workspace-modern
+  [aria-busy="true"]
+  :is(.section-heading, .notification-heading)
+  .button:disabled
+  > svg {
+  animation: schoolops-spin 800ms linear infinite;
+}
+@media (hover: hover) and (pointer: fine) {
+  .workspace-modern .button:not(:disabled):hover {
+    box-shadow: 0 3px 8px #18243312;
+    transform: translateY(-1px);
+  }
+  .workspace-modern .task-row:hover .row-arrow {
+    transform: translateX(3px);
+  }
+  .workspace-modern .nav-item:hover > svg {
+    transform: translateY(-1px);
+  }
+  .workspace-modern :is(.distribution-filter, .report-count):hover > svg {
+    transform: translate(2px, -2px);
+  }
+  .workspace-modern .evidence-photo-open:hover img {
+    transform: scale(1.025);
+  }
+}
+.workspace-modern .workspace-views button[aria-pressed="true"] {
+  animation: schoolops-tab var(--motion-state) var(--motion-ease);
+}
+.workspace-modern
+  :is(
+    .page-heading,
+    .welcome,
+    .case-detail,
+    .report-panel,
+    .selected-evidence,
+    .message,
+    .work-result,
+    .closure
+  ) {
+  animation: schoolops-arrive var(--motion-reveal) var(--motion-ease);
+}
+.workspace-modern
+  :is(
+    .report-summary,
+    .empty,
+    .detail-empty,
+    .module-empty,
+    .evidence-empty,
+    .environment,
+    .safety,
+    .packs
+  ) {
+  animation: schoolops-fade var(--motion-state) ease;
+}
+/* Only the first visible rows are staggered. Polling unchanged keys does not replay. */
+.workspace-modern
+  :is(
+    .task-list,
+    .notification-list,
+    .episode-list,
+    .evidence-section .evidence-list,
+    .packs > .evidence-list
+  )
+  > li {
+  animation: schoolops-fade var(--motion-state) ease backwards;
+}
+.workspace-modern
+  :is(
+    .task-list,
+    .notification-list,
+    .episode-list,
+    .evidence-section .evidence-list,
+    .packs > .evidence-list
+  )
+  > li:nth-child(2) {
+  animation-delay: 20ms;
+}
+.workspace-modern
+  :is(
+    .task-list,
+    .notification-list,
+    .episode-list,
+    .evidence-section .evidence-list,
+    .packs > .evidence-list
+  )
+  > li:nth-child(3) {
+  animation-delay: 40ms;
+}
+.workspace-modern
+  :is(
+    .task-list,
+    .notification-list,
+    .episode-list,
+    .evidence-section .evidence-list,
+    .packs > .evidence-list
+  )
+  > li:nth-child(4) {
+  animation-delay: 60ms;
+}
+.workspace-modern
+  :is(
+    .task-list,
+    .notification-list,
+    .episode-list,
+    .evidence-section .evidence-list,
+    .packs > .evidence-list
+  )
+  > li:nth-child(5) {
+  animation-delay: 80ms;
+}
+.workspace-modern .case-progress .progress-marker {
+  transition:
+    background-color var(--motion-state) ease,
+    color var(--motion-state) ease,
+    box-shadow var(--motion-state) ease;
+}
+.workspace-modern .case-progress .current .progress-marker {
+  animation: schoolops-step var(--motion-reveal) var(--motion-ease);
+}
+.workspace-modern .chart-arc {
+  animation: schoolops-draw 480ms var(--motion-ease);
+  transition: stroke-dasharray 360ms var(--motion-ease);
+}
+.workspace-modern .evidence-photo-open img {
+  transition: transform var(--motion-reveal) var(--motion-ease);
+}
+.workspace-modern .upload-form {
+  transition:
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-state) ease;
+}
+.workspace-modern .upload-symbol {
+  transition:
+    transform var(--motion-state) var(--motion-ease),
+    background-color var(--motion-state) ease;
+}
+.workspace-modern .upload-form.is-dragging {
+  box-shadow: inset 0 0 0 2px #206bc440;
+}
+.workspace-modern .upload-form.is-dragging .upload-symbol {
+  transform: translateY(-4px);
+}
+.workspace-modern
+  :is(.loading, .module-status, .upload-status, .scan-progress)::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #cbd9ec;
+  border-top-color: #206bc4;
+  border-radius: 50%;
+  margin-inline-end: 8px;
+  vertical-align: -2px;
+  animation: schoolops-spin 800ms linear infinite;
+}
+/* Native details keep their keyboard behavior. Older browsers simply toggle. */
+@supports (interpolate-size: allow-keywords) and
+  selector(details::details-content) {
+  .workspace-modern details {
+    interpolate-size: allow-keywords;
+  }
+  .workspace-modern details::details-content {
+    block-size: 0;
+    opacity: 0;
+    overflow: clip;
+    transition:
+      block-size var(--motion-reveal) var(--motion-ease),
+      opacity var(--motion-state) ease,
+      content-visibility var(--motion-reveal) allow-discrete;
+  }
+  .workspace-modern details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .workspace-modern .sidebar nav.mobile-open,
+  .workspace-modern .filter-options.expanded {
+    animation: schoolops-arrive var(--motion-state) var(--motion-ease);
+  }
+}
+.workspace-modern .image-viewer[open] {
+  animation: schoolops-dialog var(--motion-reveal) var(--motion-ease);
+}
+.workspace-modern .image-viewer[open]::backdrop {
+  animation: schoolops-fade var(--motion-state) ease;
+}
+@keyframes schoolops-arrive {
+  from {
+    opacity: 0.5;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes schoolops-fade {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes schoolops-tab {
+  from {
+    background-color: #206bc412;
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes schoolops-step {
+  from {
+    box-shadow: 0 0 0 5px #206bc422;
+  }
+  to {
+    box-shadow: 0 0 0 0 #206bc400;
+  }
+}
+@keyframes schoolops-draw {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+@keyframes schoolops-dialog {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes schoolops-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes schoolops-icon-select {
+  from {
+    transform: scale(0.85);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+/* Also cancels inherited component motion; JS arrival observes the same setting. */
+@media (prefers-reduced-motion: reduce) {
+  .workspace-modern *,
+  .workspace-modern *::before,
+  .workspace-modern *::after,
+  .workspace-modern details::details-content,
+  .workspace-modern .image-viewer::backdrop {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

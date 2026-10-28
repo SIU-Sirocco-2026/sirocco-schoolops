@@ -1,0 +1,1888 @@
+// SPDX-License-Identifier: Apache-2.0
+// See LICENSE and NOTICE in the repository root.
+import { useEffect, useRef, useState } from "react";
+import { useMotionArrival } from "./useMotionArrival.js";
+import {
+  IconArrowLeft,
+  IconArrowUpRight,
+  IconCheck,
+  IconChevronRight,
+  IconPlus,
+  IconSearch,
+  IconListDetails,
+  IconChartBar,
+  IconAlertTriangle,
+  IconClock,
+  IconCircleCheck,
+  IconClipboardList,
+  IconAdjustmentsHorizontal,
+  IconFilePlus,
+  IconUserCheck,
+  IconTool,
+  IconClipboardCheck,
+  IconFlagCheck,
+  IconPhoto,
+  IconArrowRight,
+  IconBuilding,
+} from "@tabler/icons-react";
+import { CaseDistribution } from "./CaseDistribution.js";
+import { AccessLog } from "./Safety.js";
+import { Evidence } from "./Evidence.js";
+import { ApiError, isVerifiedAccessDenial } from "./http.js";
+import {
+  confirmCaseRefresh,
+  hasUnsavedCase,
+  useUnsavedChanges,
+} from "./unsaved.js";
+import {
+  caseLabels,
+  caseViews,
+  navigate,
+  useWorkspaceLocation,
+} from "./workspace-state.js";
+
+type Person = { id: string; name: string; roles: string[] };
+type Catalog = {
+  rooms: { id: string; name: string }[];
+  assets: { id: string; room_id: string; name: string }[];
+  people: Person[];
+  teams: { id: string; name: string }[];
+  canCreate: boolean;
+  canAudit?: boolean;
+};
+type Case = {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  roomId: string;
+  assetId: string | null;
+  status: string;
+  syncStatus: string;
+  revision: number;
+  reporterId: string;
+  coordinatorId: string;
+  technicianId: string | null;
+  teamId: string | null;
+  approverId: string | null;
+  dueAt: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  decisionBy: string | null;
+  measures: string | null;
+  result: string | null;
+  actions: string[];
+  evidencePolicy: { submit: { minClean: number; mimeTypes?: string[] } };
+  packageVersion: string;
+  schemaVersion: string;
+  workflowVersion: string;
+  processId: string | null;
+  definitionId: string;
+  taskId: string | null;
+  taskKey: string | null;
+};
+type Event = {
+  id: string;
+  actorName: string;
+  actorId: string;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string;
+  createdAt: string;
+  details: Record<string, string | null>;
+  revision: number;
+};
+type Detail = { item: Case; timeline: Event[] };
+type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
+export const statusNames: Record<string, string> = {
+  verification: "Chờ xác minh",
+  supplement: "Chờ bổ sung",
+  assignment: "Chờ giao việc",
+  assigned: "Chờ nhận việc",
+  in_progress: "Đang xử lý",
+  acceptance: "Chờ nghiệm thu",
+  closed: "Đã đóng",
+};
+const actionNames: Record<string, string> = {
+  confirm: "Xác minh cảnh báo",
+  dismiss: "Đóng sau xác minh",
+  resolve: "Hoàn tất ứng phó và đóng",
+  created: "Báo sự cố",
+  accept: "Tiếp nhận",
+  return_info: "Yêu cầu bổ sung",
+  resubmit: "Bổ sung và gửi lại",
+  assign: "Giao việc",
+  receive: "Nhận việc",
+  save_work: "Lưu kết quả xử lý",
+  submit: "Gửi nghiệm thu",
+  return_work: "Trả lại xử lý",
+  approve: "Phê duyệt và đóng",
+  action_requested: "Đã gửi yêu cầu chuyển bước",
+  workflow_started: "Đã khởi tạo quy trình",
+  evidence_uploaded: "Đã tải bằng chứng",
+  evidence_scanned: "Đã kiểm tra bằng chứng",
+};
+const date = (v: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date(v));
+const initial = {
+  title: "",
+  roomId: "A101",
+  assetId: "A101-PROJECTOR",
+  description: "",
+};
+
+export function G01({
+  request,
+  prefix = "g01",
+  initialCase = null,
+  defaultMine = false,
+}: {
+  request: Request;
+  prefix?: string;
+  initialCase?: string | null;
+  defaultMine?: boolean;
+}) {
+  const basePath = `/api/${prefix}`;
+  const usesCaseLayout = ["g01", "g02", "g03"].includes(prefix);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<"cases" | "overview">(
+    "cases",
+  );
+  const labels =
+    caseLabels[prefix as keyof typeof caseLabels] || caseLabels.g01;
+  const route = useWorkspaceLocation();
+  const selected = route.view === caseViews[prefix] ? route.caseId : null;
+  useEffect(() => {
+    if (initialCase) chooseCase(initialCase);
+  }, [initialCase]);
+  const [bucket, setBucket] = useState("all"),
+    [evidenceReady, setEvidenceReady] = useState(false);
+  const [summary, setSummary] = useState<{
+    open: number;
+    overdue: number;
+    completed: number;
+    total: number;
+  } | null>(null);
+  const [catalog, setCatalog] = useState<Catalog | null>(null),
+    [items, setItems] = useState<Case[]>([]),
+    [total, setTotal] = useState(0);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const detailSnapshot = useRef(detail);
+  detailSnapshot.current = detail;
+  const [revisionChanged, setRevisionChanged] = useState(false);
+  const [discardGeneration, setDiscardGeneration] = useState(0);
+  const [factsExpanded, setFactsExpanded] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [listError, setListError] = useState("");
+  const [pollError, setPollError] = useState("");
+  const [status, setStatus] = useState(""),
+    [q, setQ] = useState(""),
+    [search, setSearch] = useState(""),
+    [mine, setMine] = useState(defaultMine),
+    [page, setPage] = useState(1);
+  const [showCreate, setShowCreate] = useState(false),
+    [form, setForm] = useState(initial),
+    [key, setKey] = useState(() => crypto.randomUUID());
+  const hasCreationDraft = JSON.stringify(form) !== JSON.stringify(initial);
+  const creationSaved = useUnsavedChanges(hasCreationDraft, {
+    view: caseViews[prefix]!,
+  });
+  const [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true),
+    [refreshing, setRefreshing] = useState(false),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState("");
+  const generation = useRef(0),
+    detailGeneration = useRef(0),
+    previousSelection = useRef(selected);
+  const currentSelection = useRef(selected);
+  currentSelection.current = selected;
+  function clearDeniedSnapshot(error: Error) {
+    // Invalidate older successful reads so a denial cannot be undone by a late response.
+    generation.current++;
+    detailGeneration.current++;
+    setDetail(null);
+    setSummary(null);
+    setItems([]);
+    setTotal(0);
+    setLoading(false);
+    setEvidenceReady(false);
+    setRevisionChanged(false);
+    setDetailError(error.message);
+    setListError(error.message);
+  }
+  const listPanel = useRef<HTMLElement | null>(null),
+    detailPanel = useRef<HTMLElement | null>(null),
+    listHeading = useRef<HTMLHeadingElement | null>(null),
+    detailHeading = useRef<HTMLHeadingElement | null>(null),
+    scrollRequested = useRef(false);
+  function showDetail() {
+    detailHeading.current?.focus({ preventScroll: true });
+    if (window.matchMedia("(max-width: 1100px)").matches)
+      detailPanel.current?.scrollIntoView({ block: "start" });
+  }
+  function chooseCase(id: string) {
+    setWorkspaceTab("cases");
+    if (detail?.item.id === id) showDetail();
+    else scrollRequested.current = true;
+    navigate(caseViews[prefix]!, id);
+  }
+  useEffect(() => {
+    if (scrollRequested.current && detail?.item.id === selected) {
+      scrollRequested.current = false;
+      showDetail();
+    }
+  }, [selected, detail?.item.id]);
+  async function loadList() {
+    const n = ++generation.current;
+    setLoading(true);
+    setListError("");
+    const params = new URLSearchParams({
+      page: String(page),
+      mine: String(mine),
+      bucket,
+    });
+    if (status) params.set("status", status);
+    if (search) params.set("q", search);
+    try {
+      const [list, report] = await Promise.all([
+        request<{ items: Case[]; total: number }>(
+          `${basePath}/cases?${params}`,
+        ),
+        request<{
+          open: number;
+          overdue: number;
+          completed: number;
+          total: number;
+        }>(`${basePath}/reports`),
+      ]);
+      if (n === generation.current) {
+        setSummary(report);
+        setItems(list.items);
+        setTotal(list.total);
+      }
+    } catch (e) {
+      if (n === generation.current) {
+        setListError((e as Error).message);
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
+        throw e;
+      }
+    } finally {
+      if (n === generation.current) setLoading(false);
+    }
+  }
+  async function loadDetail(id: string, discardAccepted = false) {
+    // A refresh/action may still be awaiting the list after the user opens another case.
+    if (currentSelection.current !== id) return;
+    const n = ++detailGeneration.current;
+    try {
+      const data = await request<Detail>(`${basePath}/cases/${id}`);
+      if (n === detailGeneration.current) {
+        setDetailError("");
+        const previous = detailSnapshot.current;
+        if (
+          !discardAccepted &&
+          previous?.item.id === id &&
+          previous.item.revision !== data.item.revision &&
+          hasUnsavedCase(caseViews[prefix]!, id)
+        ) {
+          setRevisionChanged(true);
+          return;
+        }
+        setRevisionChanged(false);
+        setDetail(data);
+        setDetailError("");
+        return data;
+      }
+    } catch (e) {
+      if (n === detailGeneration.current) {
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
+        else setDetailError((e as Error).message);
+      }
+      throw e;
+    }
+  }
+  const latestListLoader = useRef(loadList);
+  latestListLoader.current = loadList;
+  useEffect(() => {
+    void request<Catalog>(`${basePath}/catalog`)
+      .then(setCatalog)
+      .catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
+    void loadList().catch(() => {});
+    return () => {
+      generation.current++;
+    };
+  }, [status, search, mine, page, bucket]);
+  useEffect(() => {
+    setDetail(null);
+    setRevisionChanged(false);
+    setDetailError("");
+    setPollError("");
+    setEvidenceReady(false);
+    scrollRequested.current = !!selected;
+    if (selected) void loadDetail(selected).catch(() => {});
+    else if (previousSelection.current)
+      listHeading.current?.focus({ preventScroll: true });
+    previousSelection.current = selected;
+    return () => {
+      detailGeneration.current++;
+    };
+  }, [selected]);
+  useEffect(() => {
+    setEvidenceReady(false);
+  }, [detail?.item.taskId]);
+  useEffect(() => {
+    if (!selected || !detail || detail.item.syncStatus === "ready") return;
+    let active = true,
+      inFlight = false,
+      stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function poll() {
+      if (!active || stopped || inFlight || document.hidden) return;
+      inFlight = true;
+      let delay = 3000;
+      try {
+        const data = await loadDetail(selected!);
+        if (!active || currentSelection.current !== selected || document.hidden)
+          return;
+        setPollError("");
+        if (data?.item.syncStatus === "ready") stopped = true;
+        await latestListLoader.current();
+      } catch (e) {
+        if (active && currentSelection.current === selected) {
+          setPollError((e as Error).message);
+          if (e instanceof ApiError) {
+            if ([401, 403, 404].includes(e.status)) stopped = true;
+            if (e.status === 429) delay = Math.max(delay, e.retryAfterMs);
+          }
+        }
+      } finally {
+        inFlight = false;
+        if (active && !stopped && !document.hidden)
+          timer = setTimeout(() => void poll(), delay);
+      }
+    }
+    function visibilityChanged() {
+      clearTimeout(timer);
+      if (!document.hidden) void poll();
+    }
+    timer = setTimeout(() => void poll(), 3000);
+    document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+    };
+  }, [selected, detail?.item.syncStatus]);
+  async function refresh(discardAccepted = false) {
+    const selection = selected;
+    setRefreshing(true);
+    setError("");
+    setPollError("");
+    setNotice("");
+    try {
+      await loadList();
+      if (selection) {
+        const updated = await loadDetail(selection, discardAccepted);
+        if (updated && discardAccepted) {
+          setDiscardGeneration((n) => n + 1);
+          setEvidenceReady(false);
+        }
+      }
+    } catch (e) {
+      if (currentSelection.current === selection) {
+        setError((e as Error).message);
+        if (isVerifiedAccessDenial(e)) clearDeniedSnapshot(e as Error);
+        else setDetailError((e as Error).message);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  async function create(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const data = await request<{ item: Case; message?: string }>(
+        `${basePath}/cases`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": key },
+          body: JSON.stringify({ ...form, assetId: form.assetId || null }),
+        },
+      );
+      creationSaved();
+      chooseCase(data.item.id);
+      setKey(crypto.randomUUID());
+      setForm(initial);
+      setShowCreate(false);
+      setNotice(
+        data.message ||
+          `Đã tạo hồ sơ ${data.item.code}. Điều phối sẽ xác minh sự cố.`,
+      );
+      await loadList();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function act(action: string, fields: Record<string, unknown> = {}) {
+    if (!detail || detailError || revisionChanged) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const data = await request<{ item: Case; message?: string }>(
+        `${basePath}/cases/${detail.item.id}/actions`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action,
+            revision: detail.item.revision,
+            ...fields,
+          }),
+        },
+      );
+      setNotice(
+        data.message ||
+          `${actionNames[action]}. Hồ sơ ${data.item.code}: ${statusNames[data.item.status]}.`,
+      );
+      await loadDetail(data.item.id, true);
+      await loadList();
+    } catch (e) {
+      setError((e as Error).message);
+      await refresh();
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const name = (id: string | null) =>
+    catalog?.people.find((p) => p.id === id)?.name ||
+    detail?.timeline.find((e) => e.actorId === id)?.actorName ||
+    (id ? "Tài khoản đã thay đổi quyền" : "Chưa giao");
+  const nextStep =
+    detail &&
+    (detail.item.syncStatus !== "ready"
+      ? "Đã nhận yêu cầu. Hệ thống đang xác nhận chuyển bước; bạn không cần gửi lại."
+      : detail.item.status === "closed"
+        ? "Hồ sơ đã hoàn tất. Kết quả và lịch sử được giữ tại đây."
+        : detail.item.actions.includes("assign")
+          ? "Chọn người xử lý, người nghiệm thu và hạn hoàn thành."
+          : detail.item.actions.includes("approve")
+            ? "Kiểm tra kết quả và bằng chứng, sau đó nghiệm thu hoặc trả lại xử lý."
+            : detail.item.actions.includes("resolve")
+              ? "Ghi kết quả ứng phó, tải bằng chứng và nêu lý do trước khi đóng hồ sơ."
+              : detail.item.actions.includes("submit")
+                ? "Cập nhật kết quả, tải bằng chứng của lần xử lý này rồi gửi nghiệm thu."
+                : detail.item.actions.includes("receive")
+                  ? "Nhận công việc để bắt đầu cập nhật kết quả xử lý."
+                  : detail.item.actions.includes("resubmit")
+                    ? "Bổ sung thông tin theo yêu cầu trong lịch sử, sau đó gửi lại."
+                    : detail.item.actions.length
+                      ? "Kiểm tra nội dung và chọn cách xử lý phù hợp."
+                      : `Đang chờ ${detail.item.status === "acceptance" ? name(detail.item.approverId) : ["assigned", "in_progress"].includes(detail.item.status) ? (detail.item.technicianId ? name(detail.item.technicianId) : catalog?.teams.find((t) => t.id === detail.item.teamId)?.name || "người được giao") : name(detail.item.coordinatorId)} thực hiện bước tiếp theo.`);
+  const hasFilters = !!(
+    q ||
+    search ||
+    status ||
+    mine ||
+    bucket !== "all" ||
+    page !== 1
+  );
+  const visualNextStep =
+    detail &&
+    (detail.item.syncStatus !== "ready"
+      ? "Đang xác nhận…"
+      : detail.item.status === "closed"
+        ? "Hồ sơ hoàn tất"
+        : detail.item.actions.includes("assign")
+          ? "Giao người xử lý"
+          : detail.item.actions.includes("approve")
+            ? "Kiểm tra & nghiệm thu"
+            : detail.item.actions.includes("resolve")
+              ? "Hoàn tất ứng phó"
+              : detail.item.actions.includes("submit")
+                ? "Hoàn tất xử lý"
+                : detail.item.actions.includes("receive")
+                  ? "Nhận việc"
+                  : detail.item.actions.includes("resubmit")
+                    ? "Bổ sung hồ sơ"
+                    : detail.item.actions.length
+                      ? "Xác minh sự cố"
+                      : "Chờ người phụ trách");
+  const nextOwner =
+    detail &&
+    (detail.item.status === "supplement"
+      ? name(detail.item.reporterId)
+      : ["acceptance", "closed"].includes(detail.item.status)
+        ? name(detail.item.approverId)
+        : ["assigned", "in_progress"].includes(detail.item.status)
+          ? detail.item.technicianId
+            ? name(detail.item.technicianId)
+            : catalog?.teams.find((t) => t.id === detail.item.teamId)?.name ||
+              "Chưa giao"
+          : name(detail.item.coordinatorId));
+  const bucketLabels: Record<string, string> = {
+    all: "Tất cả",
+    open: "Đang mở",
+    overdue: "Quá hạn",
+    completed: "Hoàn thành",
+  };
+  function selectBucket(id: string) {
+    setBucket(id);
+    setStatus("");
+    setMine(false);
+    setSearch("");
+    setQ("");
+    setPage(1);
+    setWorkspaceTab("cases");
+  }
+  const appliedFilters = [
+    bucketLabels[bucket],
+    status && statusNames[status],
+    mine && "Công việc của tôi",
+    search && `Tìm “${search}”`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  function clearFilters() {
+    setBucket("all");
+    setStatus("");
+    setMine(false);
+    setSearch("");
+    setQ("");
+    setPage(1);
+  }
+  const viewMotion = useMotionArrival(
+    `${workspaceTab}:${selected}:${showCreate}`,
+  );
+  return (
+    <div
+      ref={viewMotion}
+      className={`g01 ${selected ? "has-selection" : ""} ${usesCaseLayout ? "g01-redesign" : ""}`}
+    >
+      {usesCaseLayout && !selected && (
+        <div className="workspace-viewbar">
+          <nav className="workspace-views" aria-label="Góc nhìn hồ sơ">
+            <button
+              type="button"
+              aria-pressed={workspaceTab === "cases"}
+              onClick={() => setWorkspaceTab("cases")}
+            >
+              <IconListDetails size={18} aria-hidden="true" />
+              Hồ sơ
+            </button>
+            <button
+              type="button"
+              aria-pressed={workspaceTab === "overview"}
+              onClick={() => {
+                setShowCreate(false);
+                setWorkspaceTab("overview");
+              }}
+            >
+              <IconChartBar size={18} aria-hidden="true" />
+              Tổng quan
+            </button>
+          </nav>
+          {catalog?.canCreate && (
+            <button
+              className="button primary"
+              onClick={() => {
+                setShowCreate((v) => !v);
+                setWorkspaceTab("cases");
+              }}
+              disabled={busy}
+            >
+              <IconPlus size={18} aria-hidden="true" />
+              {showCreate
+                ? "Đóng biểu mẫu"
+                : hasCreationDraft
+                  ? "Tiếp tục bản nháp"
+                  : labels.create}
+            </button>
+          )}
+        </div>
+      )}
+      {summary && (
+        <section
+          className="report-summary"
+          aria-label="Báo cáo hồ sơ"
+          aria-describedby={`report-scope-${prefix}`}
+          hidden={
+            usesCaseLayout &&
+            (!!selected || showCreate || workspaceTab !== "overview")
+          }
+        >
+          {usesCaseLayout && (
+            <div className="overview-heading">
+              <div>
+                <h2>Tổng quan xử lý</h2>
+                <p>Trong quyền xem của bạn</p>
+              </div>
+              <span className="overview-caption">
+                Chọn số liệu để mở danh sách
+              </span>
+            </div>
+          )}
+          {(
+            [
+              ["all", "Tất cả", summary.total],
+              ["open", "Đang mở", summary.open],
+              ["overdue", "Quá hạn", summary.overdue],
+              ["completed", "Hoàn thành", summary.completed],
+            ] as const
+          ).map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              className="report-count"
+              aria-pressed={bucket === id}
+              onClick={() => selectBucket(id)}
+            >
+              <span>
+                {usesCaseLayout &&
+                  (id === "overdue" ? (
+                    <IconAlertTriangle size={19} aria-hidden="true" />
+                  ) : id === "completed" ? (
+                    <IconCircleCheck size={19} aria-hidden="true" />
+                  ) : id === "open" ? (
+                    <IconClock size={19} aria-hidden="true" />
+                  ) : (
+                    <IconClipboardList size={19} aria-hidden="true" />
+                  ))}
+                {label}
+              </span>
+              <strong>{count}</strong>
+              {usesCaseLayout && (
+                <small>
+                  <span className="visually-hidden">Xem danh sách</span>
+                  <IconArrowUpRight size={16} aria-hidden="true" />
+                </small>
+              )}
+            </button>
+          ))}
+          <details className="report-scope" id={`report-scope-${prefix}`}>
+            <summary>Cách đọc số liệu</summary>
+            <p>
+              {usesCaseLayout
+                ? "Số tổng không phụ thuộc bộ lọc danh sách. Quá hạn là một phần của đang mở; không cộng hai số này với nhau."
+                : "Tổng hồ sơ bạn được phép xem, không phụ thuộc bộ lọc bên dưới. Chọn một thẻ để xem nhóm đó và bỏ các bộ lọc khác."}
+            </p>
+          </details>
+          {usesCaseLayout && (
+            <CaseDistribution summary={summary} select={selectBucket} />
+          )}
+        </section>
+      )}
+      <div className="g01-toolbar" hidden={usesCaseLayout}>
+        <div>
+          <h2>{labels.heading}</h2>
+          <p className="intro">
+            {prefix === "g03"
+              ? "Theo dõi phản ánh an toàn trong phạm vi được cấp quyền."
+              : prefix === "g02"
+                ? "Xác minh cảnh báo, ghi biện pháp và theo dõi kết quả xử lý."
+                : "Báo hỏng, phối hợp xử lý và nghiệm thu tại một nơi."}
+          </p>
+        </div>
+        {catalog?.canCreate && (
+          <button
+            className="button primary"
+            onClick={() => setShowCreate((v) => !v)}
+            disabled={busy}
+          >
+            {showCreate ? "Đóng biểu mẫu" : labels.create}
+          </button>
+        )}
+      </div>
+      {(error || listError || pollError) && (
+        <div role="alert" className="message error">
+          {error || listError || pollError}
+        </div>
+      )}
+      {notice && (
+        <div role="status" className="message success">
+          {notice}
+        </div>
+      )}
+      {showCreate && catalog && (
+        <section className="panel report-panel">
+          <div className="section-heading">
+            <div>
+              <h2>{labels.form}</h2>
+              <p className="intro">
+                Mô tả điều bạn quan sát được để người phụ trách có đủ thông tin
+                xử lý.
+              </p>
+            </div>
+          </div>
+          <form onSubmit={create}>
+            <ReportFields
+              noun={labels.noun}
+              value={form}
+              catalog={catalog}
+              prefix="new"
+              disabled={busy}
+              change={(v) => {
+                setForm(v);
+                setKey(crypto.randomUUID());
+              }}
+            />
+            <button type="submit" className="button primary" disabled={busy}>
+              {busy ? "Đang gửi…" : labels.submit}
+            </button>
+          </form>
+        </section>
+      )}
+      <form
+        className="filters"
+        hidden={
+          usesCaseLayout &&
+          (!!selected || showCreate || workspaceTab !== "cases")
+        }
+        onSubmit={(e) => {
+          e.preventDefault();
+          setPage(1);
+          setSearch(q);
+        }}
+      >
+        <div className="filter-search">
+          <label>
+            Tìm hồ sơ
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Mã, tiêu đề hoặc mô tả"
+              maxLength={160}
+            />
+          </label>
+          <button className="button secondary" type="submit">
+            {usesCaseLayout && <IconSearch size={17} aria-hidden="true" />}
+            Tìm kiếm
+          </button>
+          {usesCaseLayout && (
+            <button
+              type="button"
+              className="button secondary mobile-filter-toggle"
+              aria-label="Bộ lọc hồ sơ"
+              aria-expanded={filtersExpanded}
+              aria-controls={`case-filters-${prefix}`}
+              onClick={() => setFiltersExpanded((v) => !v)}
+            >
+              <IconAdjustmentsHorizontal size={17} aria-hidden="true" />
+              Bộ lọc
+            </button>
+          )}
+        </div>
+        <div
+          id={`case-filters-${prefix}`}
+          className={`filter-options ${filtersExpanded ? "expanded" : ""}`}
+        >
+          <label>
+            Trạng thái
+            <select
+              aria-label="Trạng thái"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Tất cả trạng thái</option>
+              {Object.entries(statusNames).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check-filter">
+            <input
+              type="checkbox"
+              checked={mine}
+              onChange={(e) => {
+                setMine(e.target.checked);
+                setPage(1);
+              }}
+            />
+            Công việc của tôi
+          </label>
+          <button
+            className="button secondary"
+            type="button"
+            data-list-refresh
+            disabled={busy || loading || refreshing}
+            onClick={() => {
+              if (confirmCaseRefresh(caseViews[prefix]!, selected))
+                void refresh(true);
+            }}
+          >
+            Làm mới hồ sơ
+          </button>
+          <button
+            className="button secondary"
+            type="button"
+            disabled={!hasFilters}
+            onClick={clearFilters}
+          >
+            Bỏ bộ lọc
+          </button>
+        </div>
+      </form>
+      {!loading && !listError && (
+        <p
+          className="filter-summary"
+          hidden={
+            usesCaseLayout &&
+            (!!selected || showCreate || workspaceTab !== "cases")
+          }
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label="Bộ lọc đang áp dụng"
+        >
+          Đang xem: {appliedFilters}. {total} hồ sơ phù hợp · Trang {page} /{" "}
+          {Math.max(1, Math.ceil(total / 25))}.
+        </p>
+      )}
+      <div className="work-grid g01-grid">
+        <section
+          className="panel case-list-panel"
+          ref={listPanel}
+          hidden={
+            usesCaseLayout &&
+            (!!selected || showCreate || workspaceTab !== "cases")
+          }
+        >
+          <div className="section-heading">
+            <h2 ref={listHeading} tabIndex={-1}>
+              Danh sách hồ sơ <span className="muted-count">{total}</span>
+            </h2>
+            <small>{mine ? "Cần bạn thao tác" : "Theo quyền của bạn"}</small>
+          </div>
+          {loading ? (
+            <p className="loading">Đang tải hồ sơ…</p>
+          ) : listError ? (
+            <div className="empty">
+              <h3>Chưa tải được danh sách hồ sơ</h3>
+              <p>
+                Kiểm tra thông báo lỗi rồi làm mới. Các bộ lọc của bạn vẫn được
+                giữ.
+              </p>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => void loadList().catch(() => {})}
+              >
+                Thử tải lại danh sách
+              </button>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="empty">
+              <h3>
+                {mine
+                  ? "Chưa có việc cần bạn thao tác"
+                  : "Chưa có hồ sơ phù hợp"}
+              </h3>
+              <p>
+                {catalog?.canCreate
+                  ? "Báo sự cố mới hoặc điều chỉnh bộ lọc."
+                  : "Công việc được giao sẽ xuất hiện tại đây."}
+              </p>
+              {usesCaseLayout && mine && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={clearFilters}
+                >
+                  Xem tất cả hồ sơ
+                </button>
+              )}
+            </div>
+          ) : (
+            <ul className="task-list">
+              {usesCaseLayout && (
+                <li className="case-list-columns" aria-hidden="true">
+                  <span>Hồ sơ / Địa điểm</span>
+                  <span>Trạng thái</span>
+                  <span>Người phụ trách</span>
+                  <span>Thời hạn</span>
+                  <span />
+                </li>
+              )}
+              {items.map((c) => (
+                <li key={c.id}>
+                  <button
+                    className={`task-row ${selected === c.id ? "selected" : ""}`}
+                    aria-current={selected === c.id ? "true" : undefined}
+                    onClick={() => chooseCase(c.id)}
+                  >
+                    <span className="task-copy">
+                      <small>
+                        {c.code} ·{" "}
+                        {catalog?.rooms.find((r) => r.id === c.roomId)?.name}
+                      </small>
+                      <strong>{c.title}</strong>
+                      <small
+                        className={
+                          usesCaseLayout ? "row-date-legacy" : undefined
+                        }
+                      >
+                        {c.dueAt
+                          ? `Hạn: ${date(c.dueAt)}`
+                          : `Tạo: ${date(c.createdAt)}`}
+                      </small>
+                    </span>
+                    <span
+                      className={`status ${c.status === "closed" ? "completed" : c.syncStatus === "ready" ? c.status : "needs_reconciliation"}`}
+                    >
+                      {c.syncStatus === "ready"
+                        ? statusNames[c.status]
+                        : "Đang xác nhận"}
+                    </span>
+                    {usesCaseLayout && (
+                      <>
+                        <span className="row-owner">
+                          <small>Phụ trách</small>
+                          {c.status === "closed"
+                            ? "Đã hoàn tất"
+                            : c.status === "supplement"
+                              ? name(c.reporterId)
+                              : c.status === "acceptance"
+                                ? name(c.approverId)
+                                : ["assigned", "in_progress"].includes(c.status)
+                                  ? c.technicianId
+                                    ? name(c.technicianId)
+                                    : catalog?.teams.find(
+                                        (t) => t.id === c.teamId,
+                                      )?.name || "Chưa giao"
+                                  : name(c.coordinatorId)}
+                        </span>
+                        <span
+                          className={`row-due ${c.dueAt && c.status !== "closed" && new Date(c.dueAt) < new Date() ? "overdue" : ""}`}
+                        >
+                          <small>
+                            {c.dueAt ? "Hạn hoàn thành" : "Ngày tạo"}
+                          </small>
+                          {date(c.dueAt || c.createdAt)}
+                        </span>
+                        <IconChevronRight
+                          className="row-arrow"
+                          size={18}
+                          aria-hidden="true"
+                        />
+                      </>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {total > 25 && (
+            <div className="pagination">
+              <button
+                className="button secondary"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Trang trước
+              </button>
+              <span>
+                Trang {page} / {Math.ceil(total / 25)}
+              </span>
+              <button
+                className="button secondary"
+                disabled={page * 25 >= total}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Trang sau
+              </button>
+            </div>
+          )}
+        </section>
+        <section
+          className="panel case-detail-panel"
+          ref={detailPanel}
+          hidden={usesCaseLayout && !selected}
+        >
+          <div className="section-heading">
+            <h2>Chi tiết hồ sơ</h2>
+            {selected && (
+              <div className="detail-tools">
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={busy || loading || refreshing}
+                  onClick={() => {
+                    if (confirmCaseRefresh(caseViews[prefix]!, selected))
+                      void refresh(true);
+                  }}
+                >
+                  {refreshing ? "Đang làm mới hồ sơ…" : "Làm mới hồ sơ"}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary case-list-return"
+                  aria-label="Về danh sách hồ sơ"
+                  onClick={() => navigate(caseViews[prefix]!)}
+                >
+                  {usesCaseLayout && (
+                    <IconArrowLeft size={17} aria-hidden="true" />
+                  )}
+                  Về danh sách
+                </button>
+              </div>
+            )}
+          </div>
+          {!detail ? (
+            <div className="detail-empty">
+              <p>
+                {detailError
+                  ? "Chưa mở được hồ sơ. Thử làm mới hoặc về danh sách để chọn hồ sơ khác."
+                  : selected
+                    ? "Đang tải chi tiết…"
+                    : "Chọn hồ sơ để xem bước tiếp theo và lịch sử."}
+              </p>
+              {detailError && <p role="alert">{detailError}</p>}
+            </div>
+          ) : (
+            <div className="details case-detail">
+              {detailError && (
+                <p role="alert" className="message error case-read-error">
+                  Chưa đọc được trạng thái mới. Nội dung đang nhập vẫn được giữ
+                  và có thể tiếp tục soạn; hãy Làm mới hồ sơ để kiểm tra trước
+                  khi gửi. {detailError}
+                </p>
+              )}
+              {revisionChanged && (
+                <p role="alert" className="message error">
+                  Hồ sơ có phiên bản mới. Nội dung bạn đang nhập vẫn được giữ;
+                  hãy chọn Làm mới hồ sơ để xem thay đổi và xác nhận bỏ nội dung
+                  chưa lưu.
+                </p>
+              )}
+              <span
+                className={`status ${detail.item.status === "closed" ? "completed" : detail.item.status}`}
+              >
+                {statusNames[detail.item.status]}
+              </span>
+              <span className="case-code">{detail.item.code}</span>
+              <h3 ref={detailHeading} tabIndex={-1}>
+                {detail.item.title}
+              </h3>
+              {usesCaseLayout && (
+                <CaseProgress status={detail.item.status} prefix={prefix} />
+              )}
+              <p className="case-description">{detail.item.description}</p>
+              <div className="next-step">
+                {usesCaseLayout && (
+                  <span className="next-step-symbol" aria-hidden="true">
+                    {detail.item.status === "closed" ? (
+                      <IconCircleCheck size={27} />
+                    ) : (
+                      <IconUserCheck size={27} />
+                    )}
+                  </span>
+                )}
+                <div>
+                  <span className="section-kicker">
+                    {detail.item.actions.length &&
+                    detail.item.syncStatus === "ready"
+                      ? "Cần bạn thực hiện"
+                      : "Tiến độ xử lý"}
+                  </span>
+                  <p>{usesCaseLayout ? visualNextStep : nextStep}</p>
+                  {usesCaseLayout && (
+                    <small className="next-owner">{nextOwner}</small>
+                  )}
+                </div>
+                {!!detail.item.actions.length &&
+                  detail.item.syncStatus === "ready" && (
+                    <button
+                      className="button primary"
+                      type="button"
+                      onClick={() => {
+                        const node = document.getElementById(
+                          `case-actions-${prefix}`,
+                        );
+                        node?.focus({ preventScroll: true });
+                        node?.scrollIntoView({
+                          block: "start",
+                          behavior: "auto",
+                        });
+                      }}
+                    >
+                      Đến bước xử lý <span aria-hidden="true">↓</span>
+                    </button>
+                  )}
+              </div>
+              <dl
+                id={`case-facts-${prefix}`}
+                className={`case-facts ${usesCaseLayout && !factsExpanded ? "compact-facts" : ""}`}
+              >
+                <div className="secondary-fact">
+                  <dt>Người báo</dt>
+                  <dd>{name(detail.item.reporterId)}</dd>
+                </div>
+                <div>
+                  <dt>
+                    {usesCaseLayout && (
+                      <IconBuilding size={16} aria-hidden="true" />
+                    )}
+                    Phòng / thiết bị
+                  </dt>
+                  <dd>
+                    {detail.item.roomId} /{" "}
+                    {catalog?.assets.find((a) => a.id === detail.item.assetId)
+                      ?.name || "Chưa xác định thiết bị"}
+                  </dd>
+                </div>
+                <div className="secondary-fact">
+                  <dt>Điều phối</dt>
+                  <dd>{name(detail.item.coordinatorId)}</dd>
+                </div>
+                <div>
+                  <dt>
+                    {usesCaseLayout && (
+                      <IconUserCheck size={16} aria-hidden="true" />
+                    )}
+                    Người / nhóm xử lý
+                  </dt>
+                  <dd>
+                    {detail.item.technicianId
+                      ? name(detail.item.technicianId)
+                      : catalog?.teams.find((t) => t.id === detail.item.teamId)
+                          ?.name || "Chưa giao"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    {usesCaseLayout && (
+                      <IconClock size={16} aria-hidden="true" />
+                    )}
+                    Hạn hoàn thành
+                  </dt>
+                  <dd
+                    className={
+                      detail.item.dueAt &&
+                      new Date(detail.item.dueAt) < new Date() &&
+                      detail.item.status !== "closed"
+                        ? "overdue"
+                        : ""
+                    }
+                  >
+                    {detail.item.dueAt
+                      ? date(detail.item.dueAt)
+                      : "Chưa đặt hạn"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    {usesCaseLayout && (
+                      <IconClipboardCheck size={16} aria-hidden="true" />
+                    )}
+                    Nghiệm thu
+                  </dt>
+                  <dd>{name(detail.item.approverId)}</dd>
+                </div>
+                <div className="secondary-fact">
+                  <dt>Tạo lúc</dt>
+                  <dd>{date(detail.item.createdAt)}</dd>
+                </div>
+              </dl>
+              {usesCaseLayout && (
+                <button
+                  className="text-button facts-toggle"
+                  type="button"
+                  aria-expanded={factsExpanded}
+                  aria-controls={`case-facts-${prefix}`}
+                  onClick={() => setFactsExpanded((v) => !v)}
+                >
+                  {factsExpanded ? "Thu gọn thông tin" : "Thông tin khác"}
+                  <IconChevronRight size={15} aria-hidden="true" />
+                </button>
+              )}
+              {detail.item.measures && (
+                <div className="work-result">
+                  <h4>Biện pháp xử lý</h4>
+                  <p>{detail.item.measures}</p>
+                  <h4>Kết quả</h4>
+                  <p>{detail.item.result}</p>
+                </div>
+              )}
+              <Evidence
+                key={`evidence-${detail.item.id}:${detail.item.taskId}:${discardGeneration}`}
+                request={request}
+                caseId={detail.item.id}
+                taskId={detail.item.taskId}
+                prefix={prefix}
+                policy={detail.item.evidencePolicy.submit}
+                onReady={setEvidenceReady}
+                disabled={
+                  busy || refreshing || !!detailError || revisionChanged
+                }
+              />
+              {detail.item.syncStatus !== "ready" ? (
+                <p className="message error">
+                  Yêu cầu đã được lưu. Hệ thống đang xác nhận kết quả và sẽ tự
+                  mở lại thao tác khi sẵn sàng. Hãy giữ nguyên hồ sơ, không gửi
+                  lại.
+                </p>
+              ) : (
+                catalog && (
+                  <Actions
+                    key={`${detail.item.id}:${detail.item.revision}:${discardGeneration}`}
+                    item={detail.item}
+                    catalog={catalog}
+                    busy={busy || refreshing}
+                    blocked={!!detailError || revisionChanged}
+                    act={act}
+                    evidenceReady={evidenceReady}
+                    prefix={prefix}
+                  />
+                )
+              )}
+              {detail.item.closedAt && (
+                <p className="closure">
+                  Đã đóng lúc {date(detail.item.closedAt)} · Quyết định bởi{" "}
+                  {name(detail.item.decisionBy)}
+                </p>
+              )}
+              {catalog?.canAudit && (
+                <AccessLog
+                  key={`access-log-${detail.item.id}`}
+                  request={request}
+                  caseId={detail.item.id}
+                />
+              )}
+              <h3 className="timeline-title">Lịch sử xử lý</h3>
+              <ol className="timeline">
+                {detail.timeline
+                  .filter(
+                    (e) =>
+                      e.action !== "action_requested" ||
+                      (detail.item.syncStatus !== "ready" &&
+                        e.revision === detail.item.revision),
+                  )
+                  .map((e) => {
+                    const EventIcon = e.action.includes("evidence")
+                      ? IconPhoto
+                      : e.action === "assign"
+                        ? IconUserCheck
+                        : e.action.includes("return")
+                          ? IconAlertTriangle
+                          : e.action === "approve"
+                            ? IconFlagCheck
+                            : IconCheck;
+                    return (
+                      <li key={e.id}>
+                        {usesCaseLayout && (
+                          <span className="timeline-icon" aria-hidden="true">
+                            <EventIcon size={16} />
+                          </span>
+                        )}
+                        <strong>{actionNames[e.action] || e.action}</strong>
+                        <small>
+                          {e.actorName} · {date(e.createdAt)}
+                        </small>
+                        {e.action !== "action_requested" && (
+                          <span className="timeline-transition">
+                            {e.fromStatus && (
+                              <>
+                                <span>{statusNames[e.fromStatus]}</span>
+                                <IconArrowRight size={13} aria-hidden="true" />
+                              </>
+                            )}
+                            <span>{statusNames[e.toStatus]}</span>
+                          </span>
+                        )}
+                        {e.details.reason && (
+                          <p className="timeline-reason">
+                            <IconAlertTriangle size={14} aria-hidden="true" />
+                            {e.details.reason}
+                          </p>
+                        )}
+                        {Object.entries(e.details).some(
+                          ([k, v]) =>
+                            v &&
+                            [
+                              "description",
+                              "measures",
+                              "result",
+                              "dueAt",
+                              "technicianId",
+                              "teamId",
+                              "approverId",
+                            ].includes(k),
+                        ) && (
+                          <details
+                            className="timeline-details"
+                            open={!usesCaseLayout}
+                          >
+                            <summary>Chi tiết</summary>
+                            {Object.entries(e.details)
+                              .filter(
+                                ([k, v]) =>
+                                  v &&
+                                  [
+                                    "description",
+                                    "measures",
+                                    "result",
+                                    "dueAt",
+                                    "technicianId",
+                                    "teamId",
+                                    "approverId",
+                                  ].includes(k),
+                              )
+                              .map(([k, v]) => (
+                                <p key={k}>
+                                  <b>
+                                    {
+                                      {
+                                        reason: "Lý do",
+                                        description: "Mô tả",
+                                        measures: "Biện pháp",
+                                        result: "Kết quả",
+                                        dueAt: "Hạn hoàn thành",
+                                        technicianId: "Người xử lý",
+                                        teamId: "Nhóm xử lý",
+                                        approverId: "Người nghiệm thu",
+                                      }[k]
+                                    }
+                                    :
+                                  </b>{" "}
+                                  {k === "dueAt"
+                                    ? date(v!)
+                                    : k.endsWith("Id")
+                                      ? k === "teamId"
+                                        ? catalog?.teams.find((t) => t.id === v)
+                                            ?.name || v
+                                        : name(v)
+                                      : v}
+                                </p>
+                              ))}
+                          </details>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ol>
+              <details className="technical-details">
+                <summary>Thông tin phiên bản và liên kết quy trình</summary>
+                <dl>
+                  <div>
+                    <dt>Gói / schema / workflow</dt>
+                    <dd>
+                      {detail.item.packageVersion} / {detail.item.schemaVersion}{" "}
+                      / {detail.item.workflowVersion}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Process / definition / task</dt>
+                    <dd className="mono">
+                      {detail.item.processId || "Chờ đồng bộ"}
+                      <br />
+                      {detail.item.definitionId}
+                      <br />
+                      {detail.item.taskId || "Đã kết thúc"} (
+                      {detail.item.taskKey || "end"})
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Revision</dt>
+                    <dd>{detail.item.revision}</dd>
+                  </div>
+                </dl>
+              </details>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+function CaseProgress({ status, prefix }: { status: string; prefix: string }) {
+  const environment = prefix === "g02";
+  const steps = environment
+    ? ["Ghi nhận", "Xác minh", "Ứng phó", "Hoàn tất"]
+    : ["Ghi nhận", "Xác minh", "Giao việc", "Xử lý", "Nghiệm thu", "Hoàn tất"];
+  const current = environment
+    ? ((
+        { triage: 1, verification: 1, in_progress: 2, closed: 3 } as Record<
+          string,
+          number
+        >
+      )[status] ?? 0)
+    : ((
+        {
+          verification: 1,
+          supplement: 0,
+          assignment: 2,
+          assigned: 3,
+          in_progress: 3,
+          acceptance: 4,
+          closed: 5,
+        } as Record<string, number>
+      )[status] ?? 0);
+  const icons = environment
+    ? [IconFilePlus, IconSearch, IconTool, IconFlagCheck]
+    : [
+        IconFilePlus,
+        IconSearch,
+        IconUserCheck,
+        IconTool,
+        IconClipboardCheck,
+        IconFlagCheck,
+      ];
+  return (
+    <ol
+      className={`case-progress ${environment ? "compact-progress" : ""}`}
+      aria-label="Tiến trình hồ sơ"
+    >
+      {steps.map((label, index) => {
+        const StepIcon = icons[index]!;
+        return (
+          <li
+            key={label}
+            className={
+              index < current ? "done" : index === current ? "current" : ""
+            }
+            aria-current={index === current ? "step" : undefined}
+          >
+            <span className="progress-marker">
+              {index < current || status === "closed" ? (
+                <IconCheck size={16} aria-hidden="true" />
+              ) : (
+                <StepIcon size={19} aria-hidden="true" />
+              )}
+            </span>
+            <span>
+              {label}
+              {index === current && (
+                <small>
+                  {status === "supplement"
+                    ? "Cần bổ sung"
+                    : status === "assigned"
+                      ? "Chờ nhận việc"
+                      : status === "closed"
+                        ? "Đã đóng hồ sơ"
+                        : "Bước hiện tại"}
+                </small>
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function ReportFields({
+  value,
+  catalog,
+  prefix,
+  change,
+  disabled,
+  noun = "sự cố",
+}: {
+  value: typeof initial;
+  catalog: Catalog;
+  prefix: string;
+  change: (v: typeof initial) => void;
+  disabled: boolean;
+  noun?: string;
+}) {
+  return (
+    <fieldset disabled={disabled} className="report-fields">
+      <label htmlFor={`${prefix}-title`}>Tiêu đề {noun}</label>
+      <input
+        id={`${prefix}-title`}
+        placeholder="Mô tả ngắn điều cần xử lý"
+        required
+        minLength={5}
+        maxLength={160}
+        value={value.title}
+        onChange={(e) => change({ ...value, title: e.target.value })}
+      />
+      <div className="field-pair">
+        <label>
+          Phòng
+          <select
+            aria-label="Phòng"
+            required
+            value={value.roomId}
+            onChange={(e) =>
+              change({ ...value, roomId: e.target.value, assetId: "" })
+            }
+          >
+            {catalog.rooms.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Thiết bị
+          <select
+            aria-label="Thiết bị"
+            value={value.assetId}
+            onChange={(e) => change({ ...value, assetId: e.target.value })}
+          >
+            <option value="">Chưa xác định / sự cố tại phòng</option>
+            {catalog.assets
+              .filter((a) => a.room_id === value.roomId)
+              .map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+      <label htmlFor={`${prefix}-description`}>Mô tả {noun}</label>
+      <textarea
+        id={`${prefix}-description`}
+        placeholder="Hiện tượng, thời điểm bắt đầu và ảnh hưởng bạn quan sát được…"
+        required
+        minLength={10}
+        maxLength={4000}
+        rows={4}
+        value={value.description}
+        onChange={(e) => change({ ...value, description: e.target.value })}
+      />
+    </fieldset>
+  );
+}
+function Actions({
+  evidenceReady,
+  prefix,
+  item,
+  catalog,
+  busy,
+  blocked,
+  act,
+}: {
+  item: Case;
+  catalog: Catalog;
+  busy: boolean;
+  blocked: boolean;
+  evidenceReady: boolean;
+  prefix: string;
+  act: (action: string, fields?: Record<string, unknown>) => Promise<void>;
+}) {
+  const [reason, setReason] = useState(""),
+    [assignment, setAssignment] = useState(""),
+    [approver, setApprover] = useState(""),
+    [due, setDue] = useState("");
+  const [measures, setMeasures] = useState(item.measures || ""),
+    [result, setResult] = useState(item.result || "");
+  const [form, setForm] = useState({
+    ...initial,
+    title: item.title,
+    roomId: item.roomId,
+    assetId: item.assetId || "",
+    description: item.description,
+  });
+  useUnsavedChanges(
+    !!reason ||
+      !!assignment ||
+      !!approver ||
+      !!due ||
+      measures !== (item.measures || "") ||
+      result !== (item.result || "") ||
+      form.title !== item.title ||
+      form.roomId !== item.roomId ||
+      form.assetId !== (item.assetId || "") ||
+      form.description !== item.description,
+    { view: caseViews[prefix]!, caseId: item.id },
+  );
+  const has = (a: string) => item.actions.includes(a);
+  if (!item.actions.length)
+    return item.status === "closed" || prefix === "g01" ? null : (
+      <p className="hint">
+        Hồ sơ đang chờ người có trách nhiệm tại bước “{statusNames[item.status]}
+        ”.
+      </p>
+    );
+  return (
+    <div className="action-panel" aria-label="Thao tác hồ sơ">
+      <h3 id={`case-actions-${prefix}`} tabIndex={-1}>
+        Bước tiếp theo
+      </h3>
+      {has("approve") && (
+        <button
+          className="button primary"
+          disabled={busy || blocked}
+          onClick={() => void act("approve")}
+        >
+          Phê duyệt và đóng hồ sơ
+        </button>
+      )}
+      {has("confirm") && (
+        <button
+          className="button primary"
+          disabled={busy || blocked}
+          onClick={() => void act("confirm")}
+        >
+          Xác nhận cần xử lý
+        </button>
+      )}
+      {has("dismiss") && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void act("dismiss", { reason });
+          }}
+        >
+          <label>
+            Lý do đóng sau xác minh
+            <textarea
+              aria-label="Lý do đóng sau xác minh"
+              disabled={busy}
+              required
+              minLength={5}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </label>
+          <button className="button secondary" disabled={busy || blocked}>
+            Đóng sau xác minh
+          </button>
+        </form>
+      )}
+      {has("accept") && (
+        <button
+          className="button primary"
+          disabled={busy || blocked}
+          onClick={() => void act("accept")}
+        >
+          {prefix === "g03" ? "Tiếp nhận phản ánh" : "Tiếp nhận sự cố"}
+        </button>
+      )}
+      {(has("return_info") || has("return_work")) && (
+        <details className="return-action">
+          <summary>
+            {has("return_info")
+              ? "Thông tin chưa đủ? Yêu cầu bổ sung"
+              : "Kết quả chưa đạt? Trả lại xử lý"}
+          </summary>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void act(has("return_info") ? "return_info" : "return_work", {
+                reason,
+              });
+            }}
+          >
+            <label>
+              Lý do trả lại
+              <textarea
+                aria-label="Lý do trả lại"
+                required
+                minLength={5}
+                maxLength={2000}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <button className="button secondary" disabled={busy || blocked}>
+              {has("return_info") ? "Trả bổ sung" : "Trả lại xử lý"}
+            </button>
+          </form>
+        </details>
+      )}
+      {has("resubmit") && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void act("resubmit", { ...form, assetId: form.assetId || null });
+          }}
+        >
+          <ReportFields
+            noun={caseLabels[prefix as keyof typeof caseLabels]?.noun}
+            value={form}
+            change={setForm}
+            catalog={catalog}
+            prefix="supplement"
+            disabled={busy}
+          />
+          <button className="button primary" disabled={busy || blocked}>
+            Bổ sung và gửi lại
+          </button>
+        </form>
+      )}
+      {has("assign") && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const [kind, id] = assignment.split(":");
+            void act("assign", {
+              technicianId: kind === "person" ? id : null,
+              teamId: kind === "team" ? id : null,
+              approverId: approver,
+              dueAt: new Date(due).toISOString(),
+            });
+          }}
+        >
+          <fieldset disabled={busy}>
+            <label>
+              Người hoặc nhóm xử lý
+              <select
+                aria-label="Người hoặc nhóm xử lý"
+                required
+                value={assignment}
+                onChange={(e) => setAssignment(e.target.value)}
+              >
+                <option value="">Chọn người hoặc nhóm</option>
+                <optgroup label="Kỹ thuật viên">
+                  {catalog.people
+                    .filter((p) => p.roles.includes("technician"))
+                    .map((p) => (
+                      <option key={p.id} value={`person:${p.id}`}>
+                        {p.name}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Nhóm">
+                  {catalog.teams.map((t) => (
+                    <option key={t.id} value={`team:${t.id}`}>
+                      {t.name}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            <label>
+              Người nghiệm thu
+              <select
+                aria-label="Người nghiệm thu"
+                required
+                value={approver}
+                onChange={(e) => setApprover(e.target.value)}
+              >
+                <option value="">Chọn người nghiệm thu</option>
+                {catalog.people
+                  .filter((p) => p.roles.includes("approver"))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Hạn hoàn thành
+              <input
+                aria-label="Hạn hoàn thành"
+                type="datetime-local"
+                required
+                value={due}
+                onChange={(e) => setDue(e.target.value)}
+              />
+            </label>
+          </fieldset>
+          <button className="button primary" disabled={busy || blocked}>
+            Giao xử lý
+          </button>
+        </form>
+      )}
+      {has("receive") && (
+        <button
+          className="button primary"
+          disabled={busy || blocked}
+          onClick={() => void act("receive")}
+        >
+          Nhận xử lý
+        </button>
+      )}
+      {(has("submit") || has("resolve")) && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const action =
+              (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ||
+              "submit";
+            void act(action, {
+              measures,
+              result,
+              ...(action === "resolve" ? { reason } : {}),
+            });
+          }}
+        >
+          <label>
+            Biện pháp xử lý
+            <textarea
+              aria-label="Biện pháp xử lý"
+              required
+              minLength={5}
+              maxLength={4000}
+              value={measures}
+              onChange={(e) => setMeasures(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          <label>
+            Kết quả xử lý
+            <textarea
+              aria-label="Kết quả xử lý"
+              required
+              minLength={5}
+              maxLength={4000}
+              value={result}
+              onChange={(e) => setResult(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          {has("resolve") && (
+            <label>
+              Lý do đóng hồ sơ
+              <textarea
+                aria-label="Lý do đóng hồ sơ"
+                disabled={busy}
+                value={reason}
+                minLength={5}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+          )}
+          <div className="action-buttons">
+            <button
+              className="button secondary"
+              type="submit"
+              value="save_work"
+              disabled={busy || blocked}
+            >
+              Lưu kết quả
+            </button>
+            <button
+              className="button primary"
+              type="submit"
+              value={has("resolve") ? "resolve" : "submit"}
+              disabled={busy || blocked || !evidenceReady}
+            >
+              {has("resolve") ? "Hoàn tất ứng phó và đóng" : "Gửi nghiệm thu"}
+            </button>
+            {!evidenceReady && (
+              <p>
+                Cần tải ít nhất một bằng chứng cho lần xử lý này và đợi quét
+                sạch để gửi nghiệm thu.
+              </p>
+            )}
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,13 @@
+# Nguồn gốc và phạm vi giấy phép
+
+Mã mới dùng Apache-2.0 theo ủy quyền của chủ dự án trong đợt hoàn thiện giai đoạn 7. Lựa chọn này phù hợp với nền tảng tích hợp cần cho phép các đội khác dùng, sửa, phân phối và có điều khoản cấp quyền bằng sáng chế. Văn bản chính thức: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Đây không phải đổi giấy phép của phụ thuộc.
+
+Repo bắt đầu bằng README/lộ trình, sau đó tạo workspace, API, web, BPMN mẫu, adapter và bộ kiểm thử trong các commit chức năng. [Đối chiếu lịch sử](LICH-SU-TACH-COMMIT.md) giữ nguồn các commit đã tách lại. Rà soát `git ls-files`, lịch sử và thông báo nguồn không phát hiện cây mã ứng dụng Eco-Track được nhập vào source hiện tại; tài liệu giai đoạn 1 ghi rõ không sao chép mã Eco-Track. Đây là kết quả rà soát của cây nguồn này, không phải tuyên bố sở hữu các thư viện hoặc dịch vụ được tích hợp. Nếu lấy mã từ repo khác về sau, phải ghi nguồn/version/phạm vi sửa và giữ giấy phép gốc trước khi merge.
+
+Phần đội xây dựng: mô hình Case/Task/Evidence, kiểm tra quyền theo hồ sơ và quyền hiện hành, outbox/đối soát, registry/validator gói bất biến, adapter PM2.5, ACL G03, giao diện tích hợp và công cụ nghiệm thu/khôi phục. Các engine/database/scanner/Identity dùng upstream nguyên bản; kết nối qua API/giao thức và cấu hình trong repo. Guard business-key trên bảng engine là SQL do dự án thêm, không phải sửa mã nguồn Flowable.
+
+`pnpm-lock.yaml` khóa dependency; `infra/images.lock.json`, Compose và Dockerfile khóa digest image. `pnpm legal:audit` đọc package được cài, xác minh nhóm giấy phép đã rà soát, thu thập văn bản license/notice và ghi SHA-256. Bằng chứng được phát hành cùng đúng source SHA; package native khác hệ điều hành được kiểm kê khi cài trên nền tảng đó, không giả rằng inventory Windows bao phủ Linux hay mọi kiến trúc.
+
+Các giấy phép npm tìm thấy trong lượt Windows ban đầu: Apache-2.0, MIT, BSD-3-Clause, ISC, MPL-2.0, 0BSD. MPL thuộc Lightning CSS/toolchain, không sửa các tệp được MPL bảo vệ; xem [hướng dẫn của Mozilla](https://www.mozilla.org/en-US/MPL/2.0/FAQ/). ClamAV là dịch vụ riêng có GPL, không nhúng libclamav vào API. Không dùng nhận định này để gộp mã GPL vào mã Apache; [ASF giải thích giới hạn tương thích](https://www.apache.org/licenses/GPL-compatibility.html). Source release không tái phân phối image ClamAV hoặc base OS.
+
+`LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` và các thông báo được tạo kèm release phải được giữ khi phân phối tương ứng. Dữ liệu demo do dự án tạo, dùng nhãn giả lập; không chứa hồ sơ trường học hoặc danh tính cá nhân thật. Logo chữ S và giao diện hiện tại do dự án tạo, không lấy tài sản thương hiệu upstream. Không có ảnh thương mại/font tải ngoài được đưa vào source hiện tại.

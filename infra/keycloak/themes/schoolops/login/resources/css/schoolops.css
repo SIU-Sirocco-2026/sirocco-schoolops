@@ -1,0 +1,234 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Shared SchoolOps identity across login, logout, expired sessions and errors. */
+:root {
+  color-scheme: light;
+  --pf-v5-global--primary-color--100: #206bc4;
+  --pf-v5-global--primary-color--200: #18549a;
+}
+html,
+body {
+  background: #f6f8fb !important;
+  color: #182433;
+  font-family: "Segoe UI", system-ui, sans-serif !important;
+}
+* {
+  box-sizing: border-box;
+}
+.pf-v5-c-login {
+  min-height: 100dvh;
+  background: #f6f8fb;
+}
+.pf-v5-c-login__container {
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  padding: 40px 20px;
+}
+.pf-v5-c-login__main {
+  --pf-v5-c-login__main--BorderTopColor: transparent;
+  background: #fff;
+  border: 1px solid #dce1e7;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px #18243308;
+}
+.pf-v5-c-login__main-header {
+  padding: 28px 28px 12px;
+  border-top: 0;
+}
+.pf-v5-c-login__main-body {
+  padding: 12px 28px 28px;
+}
+#kc-header,
+#kc-header-wrapper {
+  color: #182433 !important;
+}
+#kc-header-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 650;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+}
+#kc-header-wrapper::before {
+  content: "";
+  width: 38px;
+  height: 42px;
+  flex-shrink: 0;
+  background: url("../img/schoolops-mark.png") center / contain no-repeat;
+}
+#kc-page-title {
+  color: #182433;
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.pf-v5-c-form__label {
+  color: #34445b;
+  font-size: 14px;
+}
+.pf-v5-c-form-control {
+  min-height: 44px;
+  border: 1px solid #a4afbc;
+  border-radius: 5px;
+  background: #fff;
+}
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  border: 0;
+}
+.pf-v5-c-form-control > input {
+  min-height: 42px;
+  font-size: 16px;
+  padding: 9px 12px;
+  color: #182433;
+}
+#kc-login,
+.pf-v5-c-button.pf-m-primary {
+  min-height: 44px;
+  background: #206bc4;
+  color: #fff;
+  border: 1px solid #206bc4;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 600;
+}
+#kc-login:hover,
+.pf-v5-c-button.pf-m-primary:hover {
+  background: #18549a;
+  border-color: #18549a;
+}
+a {
+  color: #18549a;
+  text-underline-offset: 3px;
+}
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 3px solid #206bc4;
+  outline-offset: 3px;
+}
+.pf-v5-c-alert {
+  border-radius: 5px;
+  font-size: 14px;
+}
+.pf-v5-c-alert.pf-m-danger {
+  background: #fff3f4;
+  color: #922d3a;
+}
+[id^="input-error"],
+.kc-feedback-text.pf-m-error {
+  color: #a32938;
+  line-height: 1.6;
+}
+#kc-info-wrapper {
+  background: #f6f8fb;
+  border-top: 1px solid #dce1e7;
+}
+#kc-content,
+#kc-content-wrapper,
+#kc-form {
+  min-width: 0;
+}
+.pf-v5-c-login__main p,
+#kc-error-message {
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+@media (max-width: 480px) {
+  .pf-v5-c-login__container {
+    padding: 28px 16px;
+  }
+  .pf-v5-c-login__main-header {
+    padding: 24px 20px 12px;
+  }
+  .pf-v5-c-login__main-body {
+    padding: 12px 20px 24px;
+  }
+  #kc-page-title {
+    font-size: 21px;
+  }
+}
+@media (forced-colors: active) {
+  .pf-v5-c-login,
+  .pf-v5-c-login__main {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+  #kc-header,
+  #kc-header-wrapper,
+  #kc-page-title {
+    color: CanvasText !important;
+  }
+}
+
+/* The same short, functional motion as the app. No remote animation runtime. */
+.pf-v5-c-login__main {
+  animation: schoolops-auth-arrive 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+#kc-header-wrapper {
+  animation: schoolops-auth-fade 180ms ease;
+}
+.pf-v5-c-button,
+#kc-login,
+a,
+.pf-v5-c-form-control {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 180ms ease,
+    transform 120ms ease;
+}
+.pf-v5-c-form-control:focus-within {
+  border-color: #206bc4;
+  box-shadow: 0 0 0 3px #206bc41a;
+}
+:is(#kc-login, .pf-v5-c-button):not(:disabled):active {
+  transform: translateY(1px);
+}
+.pf-v5-c-alert,
+[id^="input-error"],
+.kc-feedback-text.pf-m-error,
+#kc-error-message {
+  animation: schoolops-auth-fade 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(#kc-login, .pf-v5-c-button.pf-m-primary):not(:disabled):hover {
+    box-shadow: 0 3px 8px #18243318;
+    transform: translateY(-1px);
+  }
+}
+@keyframes schoolops-auth-arrive {
+  from {
+    opacity: 0.5;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes schoolops-auth-fade {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
